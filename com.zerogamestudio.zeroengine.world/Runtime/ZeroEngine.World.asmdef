@@ -1,0 +1,14 @@
+{
+    "name": "ZeroEngine.World",
+    "rootNamespace": "ZeroEngine",
+    "references": ["ZeroEngine.Core", "ZeroEngine.Persistence"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

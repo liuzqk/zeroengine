@@ -1,0 +1,15 @@
+# Unity
+*.meta
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user
+
+# Symlinks (不跟踪软链接的目标)
+com.zerogamestudio.analytics

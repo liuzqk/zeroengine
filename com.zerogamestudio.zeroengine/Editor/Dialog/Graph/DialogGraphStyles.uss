@@ -1,0 +1,105 @@
+/* Dialog Graph Editor Styles */
+
+GridBackground {
+    --grid-background-color: #1a1a1a;
+    --line-color: rgba(255, 255, 255, 0.05);
+    --thick-line-color: rgba(255, 255, 255, 0.1);
+    --spacing: 20;
+}
+
+.node {
+    min-width: 200px;
+}
+
+.node #title {
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.node #contents {
+    background-color: #2a2a2a;
+}
+
+.node #extension {
+    background-color: #2a2a2a;
+    padding-bottom: 8px;
+}
+
+.node .port > #connector {
+    border-radius: 8px;
+}
+
+.node .port > #connector > #cap {
+    border-radius: 6px;
+}
+
+/* Port colors by node type */
+.node .port.input > #connector {
+    background-color: #606060;
+}
+
+.node .port.output > #connector {
+    background-color: #808080;
+}
+
+/* Start node */
+.node #title-label[text="Start"] {
+    color: white;
+}
+
+/* End node */
+.node #title-label[text="End"] {
+    color: white;
+}
+
+/* Text node */
+.node #title-label[text="Text"] {
+    color: white;
+}
+
+/* Choice node */
+.node #title-label[text="Choice"] {
+    color: black;
+}
+
+/* Condition node */
+.node #title-label[text="Condition"] {
+    color: white;
+}
+
+/* Edge styles */
+.edge {
+    --edge-color: #909090;
+    --ghost-edge-color: #454545;
+    --edge-width: 2;
+    --selected-edge-color: #44aaff;
+}
+
+.edge:hover {
+    --edge-color: #cccccc;
+}
+
+.edge.selected {
+    --edge-color: #44aaff;
+}
+
+/* Selection highlight */
+.node:selected {
+    border-color: #44aaff;
+    border-width: 2px;
+}
+
+.node:hover {
+    border-color: #666666;
+}
+
+/* Toolbar styling */
+Toolbar {
+    height: 22px;
+    background-color: #383838;
+}
+
+ToolbarButton {
+    margin-left: 2px;
+    margin-right: 2px;
+}

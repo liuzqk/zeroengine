@@ -1,0 +1,14 @@
+{
+    "name": "ZeroEngine.Character",
+    "rootNamespace": "ZeroEngine",
+    "references": ["ZeroEngine.Core", "ZeroEngine.Data", "ZeroEngine.Persistence", "ZeroEngine.Economy"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

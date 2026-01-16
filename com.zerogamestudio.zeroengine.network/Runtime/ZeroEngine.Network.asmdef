@@ -1,0 +1,25 @@
+{
+    "name": "ZeroEngine.Network",
+    "rootNamespace": "ZeroEngine",
+    "references": [
+        "ZeroEngine.Core",
+        "Unity.Netcode.Runtime",
+        "Unity.Services.Core",
+        "Unity.Services.Authentication",
+        "Unity.Services.Lobbies",
+        "Unity.Services.Relay",
+        "Unity.Networking.Transport"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        { "name": "com.unity.netcode.gameobjects", "expression": "", "define": "ZEROENGINE_NETCODE" },
+        { "name": "com.unity.services.core", "expression": "", "define": "ZEROENGINE_UGS" }
+    ],
+    "noEngineReferences": false
+}

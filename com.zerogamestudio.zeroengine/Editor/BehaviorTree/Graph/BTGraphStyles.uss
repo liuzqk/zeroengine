@@ -1,0 +1,103 @@
+/* Behavior Tree Graph Editor Styles */
+
+GridBackground {
+    --grid-background-color: #1a1a1a;
+    --line-color: rgba(255, 255, 255, 0.05);
+    --thick-line-color: rgba(255, 255, 255, 0.1);
+    --spacing: 20;
+}
+
+.node {
+    min-width: 180px;
+}
+
+.node #title {
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.node #title-label {
+    color: white;
+}
+
+.node #contents {
+    background-color: #2a2a2a;
+}
+
+.node #extension {
+    background-color: #2a2a2a;
+    padding-bottom: 6px;
+}
+
+/* Vertical port layout for tree structure */
+.node #input {
+    flex-direction: row;
+    justify-content: center;
+    padding-top: 4px;
+}
+
+.node #output {
+    flex-direction: row;
+    justify-content: center;
+    padding-bottom: 4px;
+}
+
+.node .port {
+    height: 16px;
+}
+
+.node .port > #connector {
+    border-radius: 8px;
+    width: 12px;
+    height: 12px;
+}
+
+.node .port > #connector > #cap {
+    border-radius: 6px;
+}
+
+/* Port colors */
+.node .port.input > #connector {
+    background-color: #808080;
+}
+
+.node .port.output > #connector {
+    background-color: #a0a0a0;
+}
+
+/* Edge styles - vertical tree layout */
+.edge {
+    --edge-color: #808080;
+    --ghost-edge-color: #454545;
+    --edge-width: 2;
+    --selected-edge-color: #44aaff;
+}
+
+.edge:hover {
+    --edge-color: #cccccc;
+}
+
+.edge.selected {
+    --edge-color: #44aaff;
+}
+
+/* Selection highlight */
+.node:selected {
+    border-color: #44aaff;
+    border-width: 2px;
+}
+
+.node:hover {
+    border-color: #555555;
+}
+
+/* Toolbar */
+Toolbar {
+    height: 22px;
+    background-color: #383838;
+}
+
+ToolbarButton {
+    margin-left: 2px;
+    margin-right: 2px;
+}

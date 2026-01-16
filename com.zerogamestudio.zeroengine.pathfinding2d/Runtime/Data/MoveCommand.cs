@@ -1,0 +1,118 @@
+// MoveCommand.cs
+// 移动指令数据结构
+// 定义寻路系统输出的单个移动指令
+
+using UnityEngine;
+
+namespace ZeroEngine.Pathfinding2D
+{
+    /// <summary>
+    /// 移动指令类型
+    /// </summary>
+    public enum MoveCommandType
+    {
+        /// <summary>行走到目标点</summary>
+        Walk,
+        /// <summary>跳跃到目标点</summary>
+        Jump,
+        /// <summary>自由落体到目标点</summary>
+        Fall,
+        /// <summary>穿过单向平台下落</summary>
+        DropDown
+    }
+
+    /// <summary>
+    /// 移动指令
+    /// 由 Platform2DPathfinder 生成，供 AI 控制器使用
+    /// </summary>
+    public struct MoveCommand
+    {
+        /// <summary>指令类型</summary>
+        public MoveCommandType CommandType;
+
+        /// <summary>目标位置</summary>
+        public Vector3 Target;
+
+        /// <summary>跳跃时的 Y 方向初速度（仅 Jump 类型有效）</summary>
+        public float JumpVelocityY;
+
+        /// <summary>跳跃时的 X 方向初速度（仅 Jump 类型有效）</summary>
+        public float JumpVelocityX;
+
+        /// <summary>预计到达时间（秒）</summary>
+        public float EstimatedDuration;
+
+        /// <summary>关联的平台碰撞体（可为 null）</summary>
+        public Collider2D PlatformCollider;
+
+        /// <summary>是否是单向平台</summary>
+        public bool IsOneWayPlatform;
+
+        /// <summary>
+        /// 创建行走指令
+        /// </summary>
+        public static MoveCommand Walk(Vector3 target, float duration = 0f)
+        {
+            return new MoveCommand
+            {
+                CommandType = MoveCommandType.Walk,
+                Target = target,
+                JumpVelocityY = 0f,
+                JumpVelocityX = 0f,
+                EstimatedDuration = duration
+            };
+        }
+
+        /// <summary>
+        /// 创建跳跃指令
+        /// </summary>
+        public static MoveCommand Jump(Vector3 target, float velocityY, float velocityX = 0f, float duration = 0f)
+        {
+            return new MoveCommand
+            {
+                CommandType = MoveCommandType.Jump,
+                Target = target,
+                JumpVelocityY = velocityY,
+                JumpVelocityX = velocityX,
+                EstimatedDuration = duration
+            };
+        }
+
+        /// <summary>
+        /// 创建自由落体指令
+        /// </summary>
+        public static MoveCommand Fall(Vector3 target, float duration = 0f)
+        {
+            return new MoveCommand
+            {
+                CommandType = MoveCommandType.Fall,
+                Target = target,
+                JumpVelocityY = 0f,
+                JumpVelocityX = 0f,
+                EstimatedDuration = duration
+            };
+        }
+
+        /// <summary>
+        /// 创建穿透平台下落指令
+        /// </summary>
+        public static MoveCommand DropDown(Vector3 target, Collider2D platform, float duration = 0f)
+        {
+            return new MoveCommand
+            {
+                CommandType = MoveCommandType.DropDown,
+                Target = target,
+                JumpVelocityY = 0f,
+                JumpVelocityX = 0f,
+                EstimatedDuration = duration,
+                PlatformCollider = platform,
+                IsOneWayPlatform = true
+            };
+        }
+
+        public override string ToString()
+        {
+            return $"[{CommandType}] Target: {Target:F2}, VelY: {JumpVelocityY:F1}, VelX: {JumpVelocityX:F1}";
+        }
+    }
+}

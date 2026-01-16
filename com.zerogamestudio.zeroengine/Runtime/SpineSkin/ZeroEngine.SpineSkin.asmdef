@@ -1,0 +1,24 @@
+{
+    "name": "ZeroEngine.SpineSkin",
+    "rootNamespace": "ZeroEngine.SpineSkin",
+    "references": [
+        "ZeroEngine"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "SPINE_UNITY"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.esotericsoftware.spine.spine-unity",
+            "expression": "",
+            "define": "SPINE_UNITY"
+        }
+    ],
+    "noEngineReferences": false
+}

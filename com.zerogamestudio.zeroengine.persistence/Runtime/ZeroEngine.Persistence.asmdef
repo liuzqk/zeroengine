@@ -1,0 +1,19 @@
+{
+    "name": "ZeroEngine.Persistence",
+    "rootNamespace": "ZeroEngine",
+    "references": [
+        "ZeroEngine.Core",
+        "ES3"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        { "name": "com.moodkie.easysave3", "expression": "", "define": "ES3" }
+    ],
+    "noEngineReferences": false
+}

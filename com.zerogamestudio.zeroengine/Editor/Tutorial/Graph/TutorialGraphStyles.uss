@@ -1,0 +1,265 @@
+/* TutorialGraphStyles.uss - v1.14.0+ */
+/* Visual styles for Tutorial Graph Editor */
+
+/* Grid Background */
+GridBackground {
+    --grid-background-color: #1a1a1a;
+    --line-color: rgba(100, 100, 100, 0.1);
+    --thick-line-color: rgba(100, 100, 100, 0.3);
+    --spacing: 15;
+}
+
+/* Node Base Styles */
+.node {
+    min-width: 180px;
+    margin: 0;
+    background-color: #2d2d2d;
+    border-radius: 6px;
+}
+
+.node #title {
+    background-color: #3a3a3a;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.node #title-label {
+    color: #ffffff;
+}
+
+.node #contents {
+    background-color: #2d2d2d;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.node #extension {
+    background-color: #252525;
+    padding: 4px 0;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/* Port Styles */
+.port {
+    height: 24px;
+}
+
+.port > #connector {
+    border-radius: 6px;
+    background-color: #4a4a4a;
+    border-width: 2px;
+    border-color: #666666;
+}
+
+.port > #connector:hover {
+    background-color: #5a5a5a;
+    border-color: #888888;
+}
+
+.port.input > #connector {
+    margin-left: 4px;
+}
+
+.port.output > #connector {
+    margin-right: 4px;
+}
+
+/* Edge Styles */
+.edge {
+    --edge-width: 2;
+    --edge-color: #ffffff;
+}
+
+.edge:hover {
+    --edge-width: 4;
+    --edge-color: #00aaff;
+}
+
+.edge.selected {
+    --edge-width: 4;
+    --edge-color: #44aaff;
+}
+
+/* Selection Styles */
+.node:selected {
+    border-width: 2px;
+    border-color: #44aaff;
+}
+
+.node:hover {
+    border-width: 1px;
+    border-color: #888888;
+}
+
+/* Start Node */
+.node.start #title {
+    background-color: #2d7d2d;
+}
+
+/* End Node */
+.node.end #title {
+    background-color: #7d2d2d;
+}
+
+/* Dialogue Node */
+.node.dialogue #title {
+    background-color: #2d4d8d;
+}
+
+/* Highlight Node */
+.node.highlight #title {
+    background-color: #8d7d2d;
+}
+
+/* Wait Nodes */
+.node.wait #title {
+    background-color: #6d3d8d;
+}
+
+/* Move Node */
+.node.move #title {
+    background-color: #3d6d6d;
+}
+
+/* Utility Nodes */
+.node.utility #title {
+    background-color: #5d5d5d;
+}
+
+/* Composite Node */
+.node.composite #title {
+    background-color: #8d4d2d;
+}
+
+/* Toolbar Styles */
+Toolbar {
+    background-color: #2d2d2d;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+    height: 22px;
+}
+
+ToolbarButton {
+    background-color: transparent;
+    border-width: 0;
+    margin: 2px;
+    padding: 2px 8px;
+    -unity-font-style: normal;
+}
+
+ToolbarButton:hover {
+    background-color: #3d3d3d;
+}
+
+ToolbarButton:active {
+    background-color: #4d4d4d;
+}
+
+ToolbarSpacer {
+    flex-grow: 1;
+}
+
+/* Inspector Styles */
+.inspector-container {
+    background-color: #2a2a2a;
+    padding: 10px;
+}
+
+.inspector-header {
+    font-size: 14px;
+    -unity-font-style: bold;
+    padding: 10px;
+    background-color: #1a1a1a;
+    border-bottom-width: 1px;
+    border-bottom-color: #3a3a3a;
+}
+
+.inspector-field {
+    margin: 4px 0;
+}
+
+.inspector-label {
+    -unity-font-style: bold;
+    color: #cccccc;
+}
+
+.inspector-value {
+    background-color: #1a1a1a;
+    padding: 4px;
+    border-radius: 3px;
+}
+
+/* Content Field Styles */
+.content-field {
+    flex-direction: row;
+    padding: 4px 8px;
+}
+
+.content-field-label {
+    width: 60px;
+    -unity-font-style: bold;
+    color: #aaaaaa;
+}
+
+.content-field-value {
+    flex-grow: 1;
+    color: #ffffff;
+    white-space: normal;
+    max-width: 150px;
+}
+
+/* Multiline Field */
+.multiline-field {
+    padding: 4px 8px;
+}
+
+.multiline-field-label {
+    -unity-font-style: bold;
+    color: #aaaaaa;
+    margin-bottom: 2px;
+}
+
+.multiline-field-value {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: 3px;
+    white-space: normal;
+    max-width: 180px;
+}
+
+/* Step Indicator Styles */
+.step-indicator {
+    padding: 8px;
+    font-size: 10px;
+    color: #888888;
+    -unity-font-style: italic;
+}
+
+/* Validation Warning */
+.validation-warning {
+    background-color: #7d5d2d;
+    padding: 4px 8px;
+    margin: 4px;
+    border-radius: 3px;
+    color: #ffffff;
+    font-size: 10px;
+}
+
+/* Split View */
+TwoPaneSplitView {
+    min-width: 100%;
+    min-height: 100%;
+}
+
+/* Object Field */
+ObjectField {
+    margin: 4px;
+}
+
+ObjectField > Label {
+    min-width: 60px;
+}

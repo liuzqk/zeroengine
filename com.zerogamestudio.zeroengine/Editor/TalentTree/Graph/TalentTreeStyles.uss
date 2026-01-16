@@ -1,0 +1,93 @@
+/* Talent Tree Editor Styles */
+
+GridBackground {
+    --grid-background-color: #1a1a1a;
+    --line-color: rgba(50, 50, 50, 0.8);
+    --thick-line-color: rgba(80, 80, 80, 0.8);
+    --spacing: 20;
+}
+
+.node {
+    min-width: 180px;
+    border-radius: 8px;
+}
+
+.node #title {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.node #contents {
+    background-color: #2a2a2a;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.node:selected {
+    border-color: #ffd700;
+    border-width: 2px;
+}
+
+.node:hover {
+    border-color: #888888;
+    border-width: 1px;
+}
+
+/* Port styles */
+.port {
+    height: 24px;
+}
+
+.port > #connector {
+    border-radius: 6px;
+    width: 12px;
+    height: 12px;
+}
+
+/* Edge styles */
+.edge {
+    --edge-width: 2;
+}
+
+.edge:selected {
+    --edge-color: #ffd700;
+}
+
+/* Inspector styles */
+.inspector-section {
+    margin-top: 12px;
+    margin-bottom: 4px;
+}
+
+.inspector-section > Label {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: #cccccc;
+}
+
+/* Button styles */
+Button {
+    border-radius: 4px;
+    padding: 4px 8px;
+}
+
+Button:hover {
+    background-color: #444444;
+}
+
+/* Toolbar */
+Toolbar {
+    background-color: #333333;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+}
+
+ToolbarButton {
+    border-radius: 0;
+    margin: 0;
+    padding: 4px 12px;
+}
+
+ToolbarButton:hover {
+    background-color: #444444;
+}

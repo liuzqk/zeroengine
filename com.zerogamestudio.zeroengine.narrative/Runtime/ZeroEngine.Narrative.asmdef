@@ -1,0 +1,24 @@
+{
+    "name": "ZeroEngine.Narrative",
+    "rootNamespace": "ZeroEngine",
+    "references": [
+        "ZeroEngine.Core",
+        "ZeroEngine.Persistence",
+        "ZeroEngine.Data",
+        "ZeroEngine.Economy",
+        "XNode",
+        "Steamworks.NET"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        { "name": "com.rlabrecque.steamworks.net", "expression": "", "define": "STEAMWORKS" },
+        { "name": "com.github.siccity.xnode", "expression": "", "define": "XNODE_PRESENT" }
+    ],
+    "noEngineReferences": false
+}

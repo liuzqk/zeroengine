@@ -1,0 +1,30 @@
+{
+    "name": "ZeroEngine.Tests.Editor",
+    "rootNamespace": "ZeroEngine.Tests",
+    "references": [
+        "ZeroEngine",
+        "ZeroEngine.Editor",
+        "ZeroEngine.AI",
+        "ZeroEngine.Narrative",
+        "ZeroEngine.Economy",
+        "ZeroEngine.Social",
+        "ZeroEngine.UI",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

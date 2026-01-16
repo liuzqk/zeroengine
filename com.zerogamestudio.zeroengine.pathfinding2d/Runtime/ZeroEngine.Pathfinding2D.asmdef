@@ -1,0 +1,22 @@
+{
+    "name": "ZeroEngine.Pathfinding2D",
+    "rootNamespace": "ZeroEngine.Pathfinding2D",
+    "references": [
+        "ZeroEngine.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.arongranberg.astar",
+            "expression": "4.0.0",
+            "define": "ASTAR_PATHFINDING_PROJECT"
+        }
+    ],
+    "noEngineReferences": false
+}
