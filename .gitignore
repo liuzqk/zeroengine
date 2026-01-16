@@ -9,4 +9,3 @@ Thumbs.db
 *.user
 
 # Symlinks (不跟踪软链接的目标)
-com.zerogamestudio.analytics
