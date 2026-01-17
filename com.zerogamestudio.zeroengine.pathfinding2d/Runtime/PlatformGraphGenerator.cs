@@ -264,7 +264,7 @@ namespace ZeroEngine.Pathfinding2D
 
         /// <summary>
         /// 从多边形路径中找出顶部边缘
-        /// 使用法线方向判断：边的法线 Y 分量 > 0 即为顶部边（可行走表面）
+        /// 使用多边形绕向 + 法线方向判断
         /// </summary>
         private List<(float left, float right, float y)> FindTopEdges(List<Vector2> points)
         {
@@ -273,7 +273,21 @@ namespace ZeroEngine.Pathfinding2D
             const float mergeThreshold = 0.1f; // Y 坐标合并阈值
             const float normalYThreshold = 0.3f; // 法线 Y 分量阈值
 
+            if (points.Count < 3) return edges;
+
+            // 计算多边形绕向（Signed Area）
+            // 正值 = 逆时针（CCW），负值 = 顺时针（CW）
+            float signedArea = 0f;
             int count = points.Count;
+            for (int i = 0; i < count; i++)
+            {
+                var p1 = points[i];
+                var p2 = points[(i + 1) % count];
+                signedArea += (p2.x - p1.x) * (p2.y + p1.y);
+            }
+            // Unity 2D 的 Y 轴向上，所以符号需要反转
+            bool isCounterClockwise = signedArea < 0;
+
             for (int i = 0; i < count; i++)
             {
                 var p1 = points[i];
@@ -290,13 +304,21 @@ namespace ZeroEngine.Pathfinding2D
                 float slope = dy / dx;
                 if (slope > slopeThreshold) continue;
 
-                // 使用叉积计算边的法线方向
-                // 对于逆时针多边形（Unity 2D 物理默认），法线朝外
-                // edge = p2 - p1, normal = (-edge.y, edge.x) 旋转90度
+                // 计算法线方向
+                // CCW 多边形：法线 = (-edge.y, edge.x) 朝外
+                // CW 多边形：法线 = (edge.y, -edge.x) 朝外
                 Vector2 edge = p2 - p1;
-                Vector2 normal = new Vector2(-edge.y, edge.x).normalized;
+                Vector2 normal;
+                if (isCounterClockwise)
+                {
+                    normal = new Vector2(-edge.y, edge.x).normalized;
+                }
+                else
+                {
+                    normal = new Vector2(edge.y, -edge.x).normalized;
+                }
 
-                // 法线 Y > 0 表示边朝上（顶部边候选）
+                // 法线 Y > 0 表示边朝上（顶部边）
                 bool isTopEdge = normal.y > normalYThreshold;
 
                 if (isTopEdge)
@@ -311,6 +333,8 @@ namespace ZeroEngine.Pathfinding2D
             // 合并相邻的边
             return MergeAdjacentEdges(edges, mergeThreshold);
         }
+
+
 
 
         /// <summary>
