@@ -30,6 +30,17 @@ namespace ZeroEngine.Pathfinding2D
         [Tooltip("最小平台宽度（小于此值的平台只生成中心节点）")]
         public float MinPlatformWidth = 1f;
 
+        [Header("密集节点模式")]
+        [Tooltip("启用密集节点生成（用于更精确的寻路）")]
+        public bool UseDenseNodes = false;
+
+        [Tooltip("密集模式节点间距")]
+        public float DenseNodeSpacing = 0.75f;
+
+        [Header("空间索引")]
+        [Tooltip("空间网格单元尺寸（用于加速节点查询）")]
+        public float SpatialGridCellSize = 3f;
+
         [Header("层级配置")]
         [Tooltip("地面层")]
         public LayerMask GroundLayer;
@@ -51,6 +62,11 @@ namespace ZeroEngine.Pathfinding2D
         /// 所有平台层的组合
         /// </summary>
         public LayerMask AllPlatformLayers => GroundLayer | OneWayPlatformLayer;
+
+        /// <summary>
+        /// 获取实际使用的节点间距
+        /// </summary>
+        public float ActualNodeSpacing => UseDenseNodes ? DenseNodeSpacing : NodeSpacing;
     }
 
     /// <summary>
@@ -80,10 +96,14 @@ namespace ZeroEngine.Pathfinding2D
         /// <summary>上次生成时间</summary>
         public float LastGenerateTime { get; private set; }
 
+        /// <summary>空间索引</summary>
+        public SpatialGrid2D SpatialGrid { get; private set; }
+
         private int nextNodeId = 0;
 
         // 复用 List 避免 GC
         private readonly List<Vector2> _pathPointsCache = new List<Vector2>(64);
+        private readonly List<PlatformNodeData> _nodesInRangeCache = new List<PlatformNodeData>(32);
 
         /// <summary>
         /// 生成平台图
@@ -104,10 +124,14 @@ namespace ZeroEngine.Pathfinding2D
             // 生成同平台行走链接
             GenerateWalkLinks();
 
+            // 构建空间索引
+            SpatialGrid = new SpatialGrid2D(config.SpatialGridCellSize);
+            SpatialGrid.Build(Nodes);
+
             IsGenerated = true;
             LastGenerateTime = Time.time;
 
-            Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接");
+            Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接, 空间索引: {SpatialGrid.GetDebugInfo()}");
         }
 
         /// <summary>
@@ -120,6 +144,8 @@ namespace ZeroEngine.Pathfinding2D
             Links.Clear();
             nextNodeId = 0;
             IsGenerated = false;
+            SpatialGrid?.Clear();
+            SpatialGrid = null;
         }
 
         /// <summary>
@@ -238,12 +264,14 @@ namespace ZeroEngine.Pathfinding2D
 
         /// <summary>
         /// 从多边形路径中找出顶部边缘
+        /// 使用法线方向判断：边的法线 Y 分量 > 0 即为顶部边（可行走表面）
         /// </summary>
         private List<(float left, float right, float y)> FindTopEdges(List<Vector2> points)
         {
             var edges = new List<(float left, float right, float y)>();
-            const float slopeThreshold = 0.3f; // 斜率阈值，小于此值认为是水平边
+            const float slopeThreshold = 0.5f; // 斜率阈值，放宽以支持斜坡
             const float mergeThreshold = 0.1f; // Y 坐标合并阈值
+            const float normalYThreshold = 0.3f; // 法线 Y 分量阈值
 
             int count = points.Count;
             for (int i = 0; i < count; i++)
@@ -262,27 +290,20 @@ namespace ZeroEngine.Pathfinding2D
                 float slope = dy / dx;
                 if (slope > slopeThreshold) continue;
 
-                // 检查是否是顶部边（法线朝上）
-                // 对于顺时针多边形，顶部边的 p1.x < p2.x
-                // 对于逆时针多边形，顶部边的 p1.x > p2.x
-                // 我们通过检查边的上方是否有其他点来判断
-                float edgeY = (p1.y + p2.y) / 2f;
-                float left = Mathf.Min(p1.x, p2.x);
-                float right = Mathf.Max(p1.x, p2.x);
+                // 使用叉积计算边的法线方向
+                // 对于逆时针多边形（Unity 2D 物理默认），法线朝外
+                // edge = p2 - p1, normal = (-edge.y, edge.x) 旋转90度
+                Vector2 edge = p2 - p1;
+                Vector2 normal = new Vector2(-edge.y, edge.x).normalized;
 
-                // 检查这条边是否是顶部边（上方没有其他点）
-                bool isTopEdge = true;
-                foreach (var p in points)
-                {
-                    if (p.x > left && p.x < right && p.y > edgeY + mergeThreshold)
-                    {
-                        isTopEdge = false;
-                        break;
-                    }
-                }
+                // 法线 Y > 0 表示边朝上（顶部边候选）
+                bool isTopEdge = normal.y > normalYThreshold;
 
                 if (isTopEdge)
                 {
+                    float edgeY = (p1.y + p2.y) / 2f;
+                    float left = Mathf.Min(p1.x, p2.x);
+                    float right = Mathf.Max(p1.x, p2.x);
                     edges.Add((left, right, edgeY));
                 }
             }
@@ -290,6 +311,7 @@ namespace ZeroEngine.Pathfinding2D
             // 合并相邻的边
             return MergeAdjacentEdges(edges, mergeThreshold);
         }
+
 
         /// <summary>
         /// 合并相邻的顶部边缘
@@ -341,6 +363,7 @@ namespace ZeroEngine.Pathfinding2D
         private void GenerateNodesForEdge(float left, float right, float y, Collider2D collider, bool isOneWay)
         {
             float width = right - left;
+            float nodeSpacing = config.ActualNodeSpacing;
 
             // 平台太窄，只生成一个中心节点
             if (width < config.MinPlatformWidth)
@@ -360,7 +383,7 @@ namespace ZeroEngine.Pathfinding2D
 
             // 生成中间表面节点
             float innerWidth = width - 2 * config.EdgeInset;
-            int innerNodeCount = Mathf.FloorToInt(innerWidth / config.NodeSpacing);
+            int innerNodeCount = Mathf.FloorToInt(innerWidth / nodeSpacing);
 
             if (innerNodeCount > 0)
             {
@@ -454,10 +477,17 @@ namespace ZeroEngine.Pathfinding2D
         }
 
         /// <summary>
-        /// 查找最近的节点
+        /// 查找最近的节点（使用空间索引加速）
         /// </summary>
         public PlatformNodeData? FindNearestNode(Vector2 position, float maxDistance = float.MaxValue)
         {
+            // 优先使用空间索引
+            if (SpatialGrid != null)
+            {
+                return SpatialGrid.FindNearest(position, maxDistance);
+            }
+
+            // 回退到线性搜索
             PlatformNodeData? nearest = null;
             float nearestDist = maxDistance;
 
@@ -475,10 +505,19 @@ namespace ZeroEngine.Pathfinding2D
         }
 
         /// <summary>
-        /// 查找指定范围内的所有节点
+        /// 查找指定范围内的所有节点（使用空间索引加速）
         /// </summary>
         public List<PlatformNodeData> FindNodesInRange(Vector2 position, float range)
         {
+            // 优先使用空间索引
+            if (SpatialGrid != null)
+            {
+                _nodesInRangeCache.Clear();
+                SpatialGrid.FindNodesInRange(position, range, _nodesInRangeCache);
+                return new List<PlatformNodeData>(_nodesInRangeCache);
+            }
+
+            // 回退到线性搜索
             var result = new List<PlatformNodeData>();
 
             foreach (var node in Nodes)
@@ -490,6 +529,32 @@ namespace ZeroEngine.Pathfinding2D
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 查找指定范围内的所有节点（无 GC 分配版本）
+        /// </summary>
+        /// <param name="position">查询位置</param>
+        /// <param name="range">范围半径</param>
+        /// <param name="results">结果列表（调用者提供）</param>
+        public void FindNodesInRangeNonAlloc(Vector2 position, float range, List<PlatformNodeData> results)
+        {
+            results.Clear();
+
+            if (SpatialGrid != null)
+            {
+                SpatialGrid.FindNodesInRange(position, range, results);
+            }
+            else
+            {
+                foreach (var node in Nodes)
+                {
+                    if (Vector2.Distance(position, node.Position) <= range)
+                    {
+                        results.Add(node);
+                    }
+                }
+            }
         }
 
         /// <summary>
