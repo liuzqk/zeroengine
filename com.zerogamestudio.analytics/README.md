@@ -21,7 +21,7 @@ ZeroGameStudio 游戏分析 SDK，支持自建 ClickHouse 数据平台。
 ```json
 {
   "dependencies": {
-    "com.zerogamestudio.analytics": "https://github.com/liuzqk/zgs-analytics-sdk.git"
+    "com.zerogamestudio.analytics": "https://github.com/liuzqk/zeroengine.git?path=com.zerogamestudio.analytics"
   }
 }
 ```
@@ -148,12 +148,29 @@ ClickHouse (OLAP 存储)
 Streamlit Dashboard (可视化)
 ```
 
+## 维护指南
+
+为了确保 AI 助手能够高效维护此 SDK，更新时请遵循以下规则：
+
+1. **版本管理**
+   - 每次修改代码逻辑后，必须更新 `package.json` 中的 `version` 字段。
+   - 遵循语义化版本 (SemVer) 规范 (X.Y.Z)。
+
+2. **文档同步**
+   - 修改 API 接口时，必须同步更新 `README.md` 中的 "API 使用" 章节。
+   - 新增配置项时，必须更新 "配置" 章节的说明。
+
+3. **变更记录**
+   - 必须在 `README.md` 底部的 "更新日志" 中记录所有变更。
+   - 格式：`- [模块] 修改内容描述`。
+
 ## 更新日志
 
 ### v1.2.0
 - OfflineQueue: 添加防抖批量保存 (5秒间隔)
 - AnalyticsLog: 支持 DEVELOPMENT_BUILD 条件编译
 - JSON: 增强 Unicode 控制字符转义
+- Docs: 添加 AI 维护指南及安装说明更新
 
 ### v1.1.0
 - 移除硬编码敏感信息
