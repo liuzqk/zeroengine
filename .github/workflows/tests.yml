@@ -48,23 +48,29 @@ jobs:
           mkdir -p TestProject/Packages
           mkdir -p TestProject/ProjectSettings
 
-          # 创建 manifest.json，引用本地包
-          cat > TestProject/Packages/manifest.json << 'EOF'
+          # 复制包到 TestProject/Packages（避免符号链接在 Docker 中失效）
+          for pkg in com.zerogamestudio.zeroengine*; do
+            if [ -d "$pkg" ]; then
+              cp -r "$pkg" "TestProject/Packages/"
+            fi
+          done
+
+          # 构建 manifest.json，使用 file: 引用本地包
+          DEPS='"com.unity.test-framework": "1.3.9"'
+          for pkg in TestProject/Packages/com.zerogamestudio.zeroengine*; do
+            if [ -d "$pkg" ]; then
+              PKG_NAME=$(basename "$pkg")
+              DEPS="$DEPS, \"$PKG_NAME\": \"file:$PKG_NAME\""
+            fi
+          done
+
+          cat > TestProject/Packages/manifest.json << EOF
           {
             "dependencies": {
-              "com.unity.test-framework": "1.3.9",
-              "com.unity.modules.physics": "1.0.0",
-              "com.unity.modules.physics2d": "1.0.0"
+              $DEPS
             }
           }
           EOF
-
-          # 创建符号链接到本地包
-          for pkg in com.zerogamestudio.zeroengine*; do
-            if [ -d "$pkg" ]; then
-              ln -s "$(pwd)/$pkg" "TestProject/Packages/$pkg"
-            fi
-          done
 
           # 创建 ProjectSettings
           cat > TestProject/ProjectSettings/ProjectVersion.txt << 'EOF'
