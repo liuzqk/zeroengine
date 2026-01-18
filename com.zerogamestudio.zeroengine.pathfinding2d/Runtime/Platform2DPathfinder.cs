@@ -219,10 +219,11 @@ namespace ZeroEngine.Pathfinding2D
         /// </summary>
         private Collider2D DetectPlatformBelow(Vector3 position)
         {
+            // 射线长度需要足够长，覆盖角色可能站立的高度范围
             var hit = Physics2D.Raycast(
                 position + Vector3.up * 0.1f,
                 Vector2.down,
-                1f,
+                config.MaxNodeSearchRadius,  // 使用节点搜索半径，确保能检测到脚下平台
                 graphGenerator.Config.AllPlatformLayers
             );
             return hit.collider;
