@@ -29,6 +29,40 @@ namespace ZeroEngine.Pathfinding2D
 
         [Tooltip("行走速度（用于时间估算）")]
         public float WalkSpeed = 5f;
+
+        [Header("路径验证")]
+        [Tooltip("目标移动多远后需要重新寻路")]
+        public float TargetMoveThreshold = 2f;
+
+        [Tooltip("偏离路径多远后需要重新寻路")]
+        public float PathDeviationThreshold = 3f;
+
+        [Tooltip("启用自动路径验证")]
+        public bool AutoValidatePath = true;
+
+        [Header("回退策略")]
+        [Tooltip("找不到完整路径时，返回部分路径")]
+        public bool AllowPartialPath = true;
+
+        [Tooltip("同平台直接行走的最大高度差")]
+        public float SamePlatformMaxHeightDiff = 0.5f;
+    }
+
+    /// <summary>
+    /// 路径验证结果
+    /// </summary>
+    public enum PathValidationResult
+    {
+        /// <summary>路径有效</summary>
+        Valid,
+        /// <summary>路径已过期</summary>
+        Expired,
+        /// <summary>目标已移动</summary>
+        TargetMoved,
+        /// <summary>偏离路径</summary>
+        Deviated,
+        /// <summary>路径不存在</summary>
+        NoPath
     }
 
     /// <summary>
@@ -95,21 +129,279 @@ namespace ZeroEngine.Pathfinding2D
                 return true;
             }
 
+            // 尝试同平台快速路径（跳过 A*）
+            var samePlatformPath = TryCreateSamePlatformPath(start, end);
+            if (samePlatformPath != null)
+            {
+                CurrentPath = samePlatformPath;
+                return true;
+            }
+
             // 查找起点和终点节点
             var startNode = graphGenerator.FindNearestNode(start, config.MaxNodeSearchRadius);
             var endNode = graphGenerator.FindNearestNode(end, config.MaxNodeSearchRadius);
 
             if (!startNode.HasValue || !endNode.HasValue)
             {
+                // 找不到节点，尝试回退策略
+                if (config.AllowPartialPath)
+                {
+                    var partialPath = TryCreatePartialPath(start, end, startNode, endNode);
+                    if (partialPath != null)
+                    {
+                        CurrentPath = partialPath;
+                        return true;
+                    }
+                }
                 CurrentPath = Platform2DPath.NotFound(start, end);
                 return false;
             }
 
             // 执行 A* 寻路
             var path = FindPath(startNode.Value, endNode.Value, start, end);
-            CurrentPath = path;
 
+            // 如果找不到路径，尝试回退策略
+            if (path.Status == PathStatus.NotFound && config.AllowPartialPath)
+            {
+                var partialPath = TryFindPartialPath(startNode.Value, endNode.Value, start, end);
+                if (partialPath != null)
+                {
+                    path = partialPath;
+                }
+            }
+
+            CurrentPath = path;
             return path.Status == PathStatus.Valid;
+        }
+
+        /// <summary>
+        /// 尝试创建同平台快速路径（直接行走，跳过 A*）
+        /// </summary>
+        private Platform2DPath TryCreateSamePlatformPath(Vector3 start, Vector3 end)
+        {
+            // 检测起点和终点脚下的平台
+            var startPlatform = DetectPlatformBelow(start);
+            var endPlatform = DetectPlatformBelow(end);
+
+            // 如果不在同一平台，返回 null
+            if (startPlatform == null || endPlatform == null || startPlatform != endPlatform)
+            {
+                return null;
+            }
+
+            // 检查高度差是否在允许范围内
+            float heightDiff = Mathf.Abs(start.y - end.y);
+            if (heightDiff > config.SamePlatformMaxHeightDiff)
+            {
+                return null;
+            }
+
+            // 检查中间是否有间隙（简单的射线检测）
+            if (!CanWalkDirectly(start, end))
+            {
+                return null;
+            }
+
+            // 创建直接行走指令
+            var commands = new List<MoveCommand>
+            {
+                MoveCommand.Walk(end, Vector2.Distance(start, end) / config.WalkSpeed)
+            };
+
+            return new Platform2DPath(start, end, commands);
+        }
+
+        /// <summary>
+        /// 检测位置下方的平台
+        /// </summary>
+        private Collider2D DetectPlatformBelow(Vector3 position)
+        {
+            var hit = Physics2D.Raycast(
+                position + Vector3.up * 0.1f,
+                Vector2.down,
+                1f,
+                graphGenerator.Config.AllPlatformLayers
+            );
+            return hit.collider;
+        }
+
+        /// <summary>
+        /// 检查是否可以直接行走到目标
+        /// </summary>
+        private bool CanWalkDirectly(Vector3 start, Vector3 end)
+        {
+            float distance = Vector2.Distance(start, end);
+            int checkCount = Mathf.CeilToInt(distance / 0.5f);
+
+            for (int i = 0; i <= checkCount; i++)
+            {
+                float t = (float)i / checkCount;
+                Vector2 checkPos = Vector2.Lerp(start, end, t);
+
+                // 向下检测地面
+                var hit = Physics2D.Raycast(
+                    checkPos + Vector2.up * 0.5f,
+                    Vector2.down,
+                    1f,
+                    graphGenerator.Config.AllPlatformLayers
+                );
+
+                if (hit.collider == null)
+                {
+                    return false; // 有间隙
+                }
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 尝试创建部分路径（起点或终点找不到节点时的回退）
+        /// </summary>
+        private Platform2DPath TryCreatePartialPath(Vector3 start, Vector3 end,
+            PlatformNodeData? startNode, PlatformNodeData? endNode)
+        {
+            // 如果只是终点找不到节点，走到最近的可达位置
+            if (startNode.HasValue && !endNode.HasValue)
+            {
+                // 找到离终点最近的节点作为临时目标
+                var nearestToEnd = graphGenerator.FindNearestNode(end, float.MaxValue);
+                if (nearestToEnd.HasValue)
+                {
+                    return FindPath(startNode.Value, nearestToEnd.Value, start, nearestToEnd.Value.Position);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 尝试找到部分路径（A* 失败时的回退）
+        /// </summary>
+        private Platform2DPath TryFindPartialPath(PlatformNodeData startNode, PlatformNodeData endNode,
+            Vector3 actualStart, Vector3 actualEnd)
+        {
+            // 找到离终点最近的可达节点
+            var closestReachable = FindClosestReachableNode(startNode, endNode);
+
+            if (closestReachable.HasValue && closestReachable.Value.NodeId != startNode.NodeId)
+            {
+                return FindPath(startNode, closestReachable.Value, actualStart, closestReachable.Value.Position);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 找到从起点可达的、离终点最近的节点
+        /// </summary>
+        private PlatformNodeData? FindClosestReachableNode(PlatformNodeData startNode, PlatformNodeData endNode)
+        {
+            var nodes = graphGenerator.Nodes;
+
+            // 使用 BFS 找到所有可达节点
+            var reachable = new HashSet<int>();
+            var queue = new Queue<int>();
+            queue.Enqueue(startNode.NodeId);
+            reachable.Add(startNode.NodeId);
+
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                var links = graphGenerator.GetOutgoingLinks(current);
+
+                foreach (var link in links)
+                {
+                    if (!reachable.Contains(link.ToNodeId))
+                    {
+                        reachable.Add(link.ToNodeId);
+                        queue.Enqueue(link.ToNodeId);
+                    }
+                }
+            }
+
+            // 在可达节点中找到离终点最近的
+            PlatformNodeData? closest = null;
+            float closestDist = float.MaxValue;
+
+            foreach (int nodeId in reachable)
+            {
+                var node = graphGenerator.GetNode(nodeId);
+                if (!node.HasValue) continue;
+
+                float dist = Vector2.Distance(node.Value.Position, endNode.Position);
+                if (dist < closestDist)
+                {
+                    closestDist = dist;
+                    closest = node;
+                }
+            }
+
+            return closest;
+        }
+
+        /// <summary>
+        /// 验证当前路径是否仍然有效
+        /// </summary>
+        /// <param name="currentPosition">当前位置</param>
+        /// <param name="targetPosition">目标位置（可能已移动）</param>
+        /// <returns>验证结果</returns>
+        public PathValidationResult ValidatePath(Vector3 currentPosition, Vector3 targetPosition)
+        {
+            if (CurrentPath == null || CurrentPath.Status != PathStatus.Valid)
+            {
+                return PathValidationResult.NoPath;
+            }
+
+            // 检查路径是否过期
+            if (CurrentPath.IsExpired(config.PathExpireTime))
+            {
+                return PathValidationResult.Expired;
+            }
+
+            // 检查目标是否移动过远
+            float targetMoveDist = Vector2.Distance(CurrentPath.EndPosition, targetPosition);
+            if (targetMoveDist > config.TargetMoveThreshold)
+            {
+                return PathValidationResult.TargetMoved;
+            }
+
+            // 检查是否偏离路径
+            var currentCmd = CurrentPath.GetCurrentCommand();
+            if (currentCmd.HasValue)
+            {
+                // 计算到当前目标点的距离
+                float deviation = Vector2.Distance(currentPosition, currentCmd.Value.Target);
+
+                // 如果偏离太远且不是在执行跳跃/下落
+                if (deviation > config.PathDeviationThreshold &&
+                    currentCmd.Value.CommandType == MoveCommandType.Walk)
+                {
+                    return PathValidationResult.Deviated;
+                }
+            }
+
+            return PathValidationResult.Valid;
+        }
+
+        /// <summary>
+        /// 自动验证并在需要时重新寻路
+        /// </summary>
+        /// <param name="currentPosition">当前位置</param>
+        /// <param name="targetPosition">目标位置</param>
+        /// <returns>如果重新寻路返回 true</returns>
+        public bool TryAutoRevalidate(Vector3 currentPosition, Vector3 targetPosition)
+        {
+            if (!config.AutoValidatePath) return false;
+
+            var result = ValidatePath(currentPosition, targetPosition);
+
+            if (result != PathValidationResult.Valid && result != PathValidationResult.NoPath)
+            {
+                return RequestPath(currentPosition, targetPosition, forceRequest: true);
+            }
+
+            return false;
         }
 
         /// <summary>

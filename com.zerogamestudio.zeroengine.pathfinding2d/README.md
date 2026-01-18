@@ -2,6 +2,11 @@
 
 2D 平台寻路系统，为 2D 横版平台游戏提供智能跳跃寻路能力。
 
+## 版本
+
+- **当前版本**: 1.1.0
+- **依赖**: ZeroEngine.Core >= 2.0.0
+
 ## 概述
 
 该系统通过扫描场景中的平台碰撞体，自动生成平台节点网络（Point Graph），并计算跳跃链接（Jump Links），让 AI 角色能够智能地在多层平台之间跳跃寻路。
@@ -13,6 +18,9 @@
 - **A* 寻路**：内置 A* 路径搜索算法
 - **MoveCommand 系统**：将路径转换为具体移动指令
 - **编辑器可视化**：在 Scene 视图实时预览节点和链接
+- **空间索引加速** (v1.1.0+)：使用 SpatialGrid2D 将节点查询从 O(n) 优化到 O(k)
+- **同平台快速路径** (v1.1.0+)：起终点在同一平台时跳过 A*，直接生成 Walk 指令
+- **路径验证与回退** (v1.1.0+)：检测路径过期/目标移动/偏离，A* 失败时返回部分路径
 
 ## 核心组件
 
@@ -23,6 +31,29 @@
 ```csharp
 // 生成平台图
 platformGraphGenerator.GeneratePlatformGraph();
+
+// 查找最近节点（使用空间索引加速）(v1.1.0+)
+var node = platformGraphGenerator.FindNearestNode(position, maxDistance);
+
+// 查找范围内节点（无 GC 版本）(v1.1.0+)
+var results = new List<PlatformNodeData>();
+platformGraphGenerator.FindNodesInRangeNonAlloc(position, range, results);
+```
+
+### SpatialGrid2D (v1.1.0+)
+
+2D 空间网格索引，加速节点查询。
+
+```csharp
+// 自动在 GeneratePlatformGraph() 时构建
+// 通过 PlatformGraphGenerator.SpatialGrid 访问
+
+// 查找最近节点 O(k) 而非 O(n)
+var nearest = spatialGrid.FindNearest(position, maxDistance);
+
+// 查找范围内所有节点（无 GC）
+var results = new List<PlatformNodeData>();
+spatialGrid.FindNodesInRange(position, range, results);
 ```
 
 ### JumpLinkCalculator
@@ -34,6 +65,8 @@ platformGraphGenerator.GeneratePlatformGraph();
 jumpLinkCalculator.GenerateJumpLinks();
 ```
 
+**v1.1.0 更新**：表面节点也支持垂直下落链接生成（水平距离 <= 1.5 单位）。
+
 ### Platform2DPathfinder
 
 执行寻路请求，生成 MoveCommand 序列。
@@ -44,6 +77,13 @@ pathfinder.RequestPath(start, end);
 
 // 获取当前移动指令
 var cmd = pathfinder.GetCurrentCommand();
+
+// 路径验证 (v1.1.0+)
+var result = pathfinder.ValidatePath(currentPos, targetPos);
+// result: Valid / Expired / TargetMoved / Deviated / NoPath
+
+// 自动重新寻路 (v1.1.0+)
+bool repathed = pathfinder.TryAutoRevalidate(currentPos, targetPos);
 ```
 
 ### MoveCommand
@@ -103,6 +143,9 @@ public override void OnPhysicsUpdate()
 | EdgeInset | 边缘内缩 | 0.3m |
 | GroundLayer | 地面层 | - |
 | OneWayPlatformLayer | 单向平台层 | - |
+| UseDenseNodes | 启用密集节点模式 (v1.1.0+) | false |
+| DenseNodeSpacing | 密集模式节点间距 (v1.1.0+) | 0.75m |
+| SpatialGridCellSize | 空间索引格子尺寸 (v1.1.0+) | 3m |
 
 ### JumpLinkConfig
 
@@ -112,11 +155,54 @@ public override void OnPhysicsUpdate()
 | MaxHorizontalDistance | 最大水平跳跃距离 | 6m |
 | MaxJumpHeight | 最大跳跃高度 | 4m |
 | GravityScale | 重力缩放 | 3 |
+| SurfaceNodeVerticalFallMaxHorizontal | 表面节点垂直下落最大水平距离 (v1.1.0+) | 1.5m |
+
+### PathfinderConfig (v1.1.0+)
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| PathRequestInterval | 路径请求间隔 | 0.3s |
+| PathExpireTime | 路径过期时间 | 2s |
+| ArriveDistance | 到达判定距离 | 0.5m |
+| TargetMoveThreshold | 目标移动重寻路阈值 | 2m |
+| PathDeviationThreshold | 偏离路径重寻路阈值 | 3m |
+| AutoValidatePath | 启用自动路径验证 | true |
+| AllowPartialPath | 允许返回部分路径 | true |
+| SamePlatformMaxHeightDiff | 同平台快速路径最大高度差 | 0.5m |
 
 ## 依赖
 
 - ZeroEngine.Core >= 2.0.0
 
-## 版本
+## 版本历史
 
-- 1.0.0 - 初始版本
+### 1.1.0 - 2026-01-16
+
+**新增功能**
+- `SpatialGrid2D` - 2D 空间网格索引，将节点查询从 O(n) 优化到 O(k)
+- 同平台快速路径 - 起终点在同一平台时跳过 A*，直接生成 Walk 指令
+- 路径验证系统 - 检测路径过期、目标移动、偏离路径
+- 路径回退策略 - A* 失败时返回部分路径
+- 表面节点垂直下落链接 - 不再限于边缘节点
+
+**性能优化**
+- 空间索引加速 `FindNearestNode()` 和 `FindNodesInRange()`
+- 新增 `FindNodesInRangeNonAlloc()` 零 GC 版本
+- 密集节点模式配置选项
+
+**新增配置**
+- `PathfinderConfig` - 路径请求、验证、回退策略配置
+- `PlatformGraphConfig.UseDenseNodes` - 密集节点模式
+- `PlatformGraphConfig.SpatialGridCellSize` - 空间索引格子尺寸
+- `JumpLinkConfig.SurfaceNodeVerticalFallMaxHorizontal` - 表面节点下落距离
+
+**代码审查**
+- 综合评分: 93/100
+- 已修复: 移除未使用的缓存字段
+
+### 1.0.0 - 初始版本
+
+- 平台图自动生成
+- 跳跃链接计算
+- A* 寻路算法
+- MoveCommand 指令系统

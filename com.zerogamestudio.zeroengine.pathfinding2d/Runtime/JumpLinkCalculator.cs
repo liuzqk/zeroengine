@@ -21,7 +21,7 @@ namespace ZeroEngine.Pathfinding2D
         public float MaxHorizontalDistance = 6f;
 
         [Tooltip("最大跳跃高度")]
-        public float MaxJumpHeight = 4f;
+        public float MaxJumpHeight = 6f;
 
         [Tooltip("重力缩放 (Rigidbody2D.gravityScale)")]
         public float GravityScale = 3f;
@@ -32,6 +32,9 @@ namespace ZeroEngine.Pathfinding2D
 
         [Tooltip("最大下落水平距离")]
         public float MaxFallHorizontalDistance = 4f;
+
+        [Tooltip("表面节点垂直下落最大水平距离（小于此值才从表面节点生成下落链接）")]
+        public float SurfaceNodeVerticalFallMaxHorizontal = 1.5f;
 
         [Header("验证参数")]
         [Tooltip("轨迹碰撞检测半径")]
@@ -87,9 +90,10 @@ namespace ZeroEngine.Pathfinding2D
             {
                 var fromNode = nodes[i];
 
-                // 边缘节点优先处理下落链接，表面节点也可以发起跳跃
+                // 判断节点类型
                 bool isEdgeNode = fromNode.NodeType == PlatformNodeType.LeftEdge ||
                                   fromNode.NodeType == PlatformNodeType.RightEdge;
+                bool isSurfaceNode = fromNode.NodeType == PlatformNodeType.Surface;
 
                 // 计算跳跃到其他平台的链接
                 for (int j = 0; j < nodes.Count; j++)
@@ -118,10 +122,19 @@ namespace ZeroEngine.Pathfinding2D
                             }
                         }
                     }
-                    // 目标在下方 - 尝试下落（只从边缘节点发起下落链接）
-                    else if (isEdgeNode && verticalDist < -0.5f && Mathf.Abs(verticalDist) <= config.MaxFallHeight)
+                    // 目标在下方 - 尝试下落
+                    else if (verticalDist < -0.5f && Mathf.Abs(verticalDist) <= config.MaxFallHeight)
                     {
-                        if (horizontalDist <= config.MaxFallHorizontalDistance)
+                        // 边缘节点：完整下落检测（水平 + 垂直）
+                        if (isEdgeNode && horizontalDist <= config.MaxFallHorizontalDistance)
+                        {
+                            if (TryCreateFallLink(fromNode, toNode, obstacleLayer))
+                            {
+                                fallLinksCreated++;
+                            }
+                        }
+                        // 表面节点：仅限垂直下落（水平距离很小）
+                        else if (isSurfaceNode && horizontalDist <= config.SurfaceNodeVerticalFallMaxHorizontal)
                         {
                             if (TryCreateFallLink(fromNode, toNode, obstacleLayer))
                             {
@@ -131,7 +144,7 @@ namespace ZeroEngine.Pathfinding2D
                     }
                 }
 
-                // 检查穿透单向平台下落（只从边缘节点或单向平台节点发起）
+                // 检查穿透单向平台下落（边缘节点或单向平台节点）
                 if (isEdgeNode && fromNode.IsOneWay)
                 {
                     var dropLinks = CreateDropThroughLinks(fromNode, nodes, obstacleLayer);
