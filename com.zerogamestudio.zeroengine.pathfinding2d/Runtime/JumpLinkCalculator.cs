@@ -85,6 +85,13 @@ namespace ZeroEngine.Pathfinding2D
             int fallLinksCreated = 0;
             int dropLinksCreated = 0;
 
+            // 诊断计数器
+            int jumpAttempts = 0;
+            int jumpFailedDistance = 0;
+            int jumpFailedHeight = 0;
+            int jumpFailedReachable = 0;
+            int jumpFailedTrajectory = 0;
+
             // 遍历所有节点（不仅限于边缘节点，让任意位置都能发起跳跃）
             for (int i = 0; i < nodes.Count; i++)
             {
@@ -116,11 +123,25 @@ namespace ZeroEngine.Pathfinding2D
                     {
                         if (horizontalDist <= config.MaxHorizontalDistance)
                         {
-                            if (TryCreateJumpLink(fromNode, toNode, obstacleLayer))
+                            jumpAttempts++;
+                            if (TryCreateJumpLink(fromNode, toNode, obstacleLayer, out string failReason))
                             {
                                 jumpLinksCreated++;
                             }
+                            else
+                            {
+                                if (failReason == "unreachable") jumpFailedReachable++;
+                                else if (failReason == "trajectory") jumpFailedTrajectory++;
+                            }
                         }
+                        else
+                        {
+                            jumpFailedDistance++;
+                        }
+                    }
+                    else if (verticalDist > config.MaxJumpHeight)
+                    {
+                        jumpFailedHeight++;
                     }
                     // 目标在下方 - 尝试下落
                     else if (verticalDist < -0.5f && Mathf.Abs(verticalDist) <= config.MaxFallHeight)
@@ -153,13 +174,19 @@ namespace ZeroEngine.Pathfinding2D
             }
 
             Debug.Log($"[JumpLinkCalculator] 链接生成完成: 跳跃 {jumpLinksCreated}, 下落 {fallLinksCreated}, 穿透 {dropLinksCreated}");
+            Debug.Log($"[JumpLinkCalculator] 跳跃诊断: 尝试={jumpAttempts}, 成功={jumpLinksCreated}, " +
+                      $"超距离={jumpFailedDistance}, 超高度={jumpFailedHeight}, 不可达={jumpFailedReachable}, 轨迹阻挡={jumpFailedTrajectory}");
+            Debug.Log($"[JumpLinkCalculator] 配置: MaxJumpHeight={config.MaxJumpHeight}, MaxHorizontalDistance={config.MaxHorizontalDistance}, " +
+                      $"MaxJumpVelocity={config.MaxJumpVelocity}, ObstacleLayer={obstacleLayer.value}");
         }
 
         /// <summary>
         /// 尝试创建跳跃链接
         /// </summary>
-        private bool TryCreateJumpLink(PlatformNodeData from, PlatformNodeData to, LayerMask obstacleLayer)
+        private bool TryCreateJumpLink(PlatformNodeData from, PlatformNodeData to, LayerMask obstacleLayer, out string failReason)
         {
+            failReason = null;
+
             var result = JumpMovementHandler.CalculateJump(
                 from.Position,
                 to.Position,
@@ -168,11 +195,16 @@ namespace ZeroEngine.Pathfinding2D
                 config.Overshoot
             );
 
-            if (!result.IsReachable) return false;
+            if (!result.IsReachable)
+            {
+                failReason = "unreachable";
+                return false;
+            }
 
             // 验证轨迹无障碍
             if (!JumpMovementHandler.ValidateTrajectory(result.Trajectory, obstacleLayer, config.TrajectoryCheckRadius))
             {
+                failReason = "trajectory";
                 return false;
             }
 
