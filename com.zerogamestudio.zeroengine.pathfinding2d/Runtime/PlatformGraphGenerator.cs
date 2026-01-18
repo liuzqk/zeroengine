@@ -264,31 +264,20 @@ namespace ZeroEngine.Pathfinding2D
 
         /// <summary>
         /// 从多边形路径中找出顶部边缘
-        /// 使用多边形绕向 + 法线方向判断
+        /// 使用射线检测判断是否是可站立表面
         /// </summary>
         private List<(float left, float right, float y)> FindTopEdges(List<Vector2> points)
         {
             var edges = new List<(float left, float right, float y)>();
             const float slopeThreshold = 0.5f; // 斜率阈值，放宽以支持斜坡
             const float mergeThreshold = 0.1f; // Y 坐标合并阈值
-            const float normalYThreshold = 0.3f; // 法线 Y 分量阈值
+            const float rayCheckOffset = 0.1f; // 射线起点偏移
 
             if (points.Count < 3) return edges;
 
-            // 计算多边形绕向（Signed Area）
-            // 正值 = 逆时针（CCW），负值 = 顺时针（CW）
-            float signedArea = 0f;
             int count = points.Count;
-            for (int i = 0; i < count; i++)
-            {
-                var p1 = points[i];
-                var p2 = points[(i + 1) % count];
-                signedArea += (p2.x - p1.x) * (p2.y + p1.y);
-            }
-            // Unity 2D 的 Y 轴向上，所以符号需要反转
-            bool isCounterClockwise = signedArea < 0;
 
-            Debug.Log($"[FindTopEdges] 多边形点数: {count}, SignedArea: {signedArea:F2}, CCW: {isCounterClockwise}");
+            Debug.Log($"[FindTopEdges] 多边形点数: {count}");
 
             for (int i = 0; i < count; i++)
             {
@@ -306,28 +295,21 @@ namespace ZeroEngine.Pathfinding2D
                 float slope = dy / dx;
                 if (slope > slopeThreshold) continue;
 
-                // 计算法线方向
-                // CCW 多边形：法线 = (-edge.y, edge.x) 朝外
-                // CW 多边形：法线 = (edge.y, -edge.x) 朝外
-                Vector2 edge = p2 - p1;
-                Vector2 normal;
-                if (isCounterClockwise)
-                {
-                    normal = new Vector2(-edge.y, edge.x).normalized;
-                }
-                else
-                {
-                    normal = new Vector2(edge.y, -edge.x).normalized;
-                }
+                // 计算边的中点
+                float midX = (p1.x + p2.x) / 2f;
+                float midY = (p1.y + p2.y) / 2f;
 
-                // 法线 Y > 0 表示边朝上（顶部边）
-                bool isTopEdge = normal.y > normalYThreshold;
+                // 从边的上方向下发射射线，检测这条边是否是可站立表面
+                Vector2 rayOrigin = new Vector2(midX, midY + rayCheckOffset);
+                RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayCheckOffset * 3f, config.AllPlatformLayers);
 
-                Debug.Log($"[FindTopEdges] 边 {i}: ({p1.x:F1},{p1.y:F1})->({p2.x:F1},{p2.y:F1}), 法线Y: {normal.y:F2}, 是顶部: {isTopEdge}");
+                bool isTopEdge = hit.collider != null && Mathf.Abs(hit.point.y - midY) < 0.2f;
+
+                Debug.Log($"[FindTopEdges] 边 {i}: ({p1.x:F1},{p1.y:F1})->({p2.x:F1},{p2.y:F1}), 射线命中: {hit.collider != null}, 是顶部: {isTopEdge}");
 
                 if (isTopEdge)
                 {
-                    float edgeY = (p1.y + p2.y) / 2f;
+                    float edgeY = midY;
                     float left = Mathf.Min(p1.x, p2.x);
                     float right = Mathf.Max(p1.x, p2.x);
                     edges.Add((left, right, edgeY));
