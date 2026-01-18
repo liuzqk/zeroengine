@@ -1,5 +1,12 @@
 # ZeroEngine 单元测试 CI
 # 在每次 Push 和 PR 时运行 EditMode 测试
+#
+# ⚠️ 前置条件：需要在 GitHub 仓库设置中配置以下 Secrets：
+#   - UNITY_LICENSE: Unity 许可证文件内容 (.ulf)
+#   - UNITY_EMAIL: Unity 账号邮箱
+#   - UNITY_PASSWORD: Unity 账号密码
+#
+# 获取许可证: https://game.ci/docs/github/activation
 
 name: Unity Tests
 
@@ -14,6 +21,14 @@ on:
     paths:
       - 'com.zerogamestudio.zeroengine*/**'
       - '.github/workflows/tests.yml'
+  # 允许手动触发
+  workflow_dispatch:
+
+# 需要写权限来发布测试报告
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   test:
@@ -44,18 +59,21 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
+          unityVersion: 2022.3.62f1
           testMode: EditMode
           artifactsPath: TestResults
           checkName: EditMode Test Results
-          # 指定测试程序集
-          assemblyNames: ZeroEngine.Tests.Editor
+          # 使用 packageMode 测试 UPM 包
+          packageMode: true
+          # 通过 customParameters 指定测试程序集
+          customParameters: -assemblyNames ZeroEngine.Tests.Editor
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Test Results
-          path: ${{ steps.testRunner.outputs.artifactsPath }}
+          path: TestResults
           retention-days: 14
 
       - name: Publish Test Report
