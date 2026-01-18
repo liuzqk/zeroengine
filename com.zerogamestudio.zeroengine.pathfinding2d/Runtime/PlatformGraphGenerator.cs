@@ -653,68 +653,11 @@ namespace ZeroEngine.Pathfinding2D
             return result;
         }
 
-#if UNITY_EDITOR
-        private void OnDrawGizmosSelected()
-        {
-            // 绘制扫描区域
-            Gizmos.color = new Color(0f, 1f, 0f, 0.2f);
-            Gizmos.DrawWireCube(config.ScanCenter, config.ScanSize);
-
-            if (!IsGenerated) return;
-
-            // 绘制节点
-            foreach (var node in Nodes)
-            {
-                switch (node.NodeType)
-                {
-                    case PlatformNodeType.LeftEdge:
-                    case PlatformNodeType.RightEdge:
-                        Gizmos.color = Color.yellow;
-                        break;
-                    case PlatformNodeType.OneWay:
-                        Gizmos.color = Color.cyan;
-                        break;
-                    default:
-                        Gizmos.color = node.IsOneWay ? Color.cyan : Color.green;
-                        break;
-                }
-
-                Gizmos.DrawSphere(node.Position, 0.2f);
-            }
-
-            // 绘制链接
-            foreach (var link in Links)
-            {
-                var fromNode = GetNode(link.FromNodeId);
-                var toNode = GetNode(link.ToNodeId);
-
-                if (!fromNode.HasValue || !toNode.HasValue) continue;
-
-                switch (link.LinkType)
-                {
-                    case PlatformLinkType.Walk:
-                        Gizmos.color = Color.green;
-                        break;
-                    case PlatformLinkType.Jump:
-                        Gizmos.color = Color.yellow;
-                        break;
-                    case PlatformLinkType.Fall:
-                    case PlatformLinkType.DropThrough:
-                        Gizmos.color = Color.blue;
-                        break;
-                }
-
-                Gizmos.DrawLine(fromNode.Value.Position, toNode.Value.Position);
-            }
-        }
-
         /// <summary>
         /// 生成详细诊断报告
         /// </summary>
 #if ODIN_INSPECTOR
         [Button("输出详细诊断报告", ButtonSizes.Medium), PropertyOrder(100)]
-#else
-        [ContextMenu("输出详细诊断报告")]
 #endif
         public void GenerateDiagnosticReport()
         {
@@ -804,36 +747,6 @@ namespace ZeroEngine.Pathfinding2D
             Debug.Log(sb.ToString());
         }
 
-        /// <summary>
-        /// 查询指定位置附近的节点详情
-        /// </summary>
-        public string QueryNodesNearPosition(Vector2 position, float radius = 5f)
-        {
-            var sb = new System.Text.StringBuilder();
-            sb.AppendLine($"[查询位置 {position} 半径 {radius} 内的节点]");
-
-            var nearestNode = FindNearestNode(position, radius);
-            if (nearestNode.HasValue)
-            {
-                var n = nearestNode.Value;
-                sb.AppendLine($"  最近节点: ID={n.NodeId}, Pos={n.Position}, Type={n.NodeType}, OneWay={n.IsOneWay}");
-                sb.AppendLine($"  距离: {Vector2.Distance(position, n.Position):F2}");
-            }
-            else
-            {
-                sb.AppendLine($"  未找到节点！");
-
-                // 查找更大范围
-                var farNode = FindNearestNode(position, 20f);
-                if (farNode.HasValue)
-                {
-                    sb.AppendLine($"  扩大到20米范围找到: Pos={farNode.Value.Position}, 距离={Vector2.Distance(position, farNode.Value.Position):F2}");
-                }
-            }
-
-            return sb.ToString();
-        }
-
         private string LayerMaskToNames(LayerMask mask)
         {
             var names = new List<string>();
@@ -847,6 +760,61 @@ namespace ZeroEngine.Pathfinding2D
                 }
             }
             return names.Count > 0 ? string.Join(", ", names) : "无";
+        }
+
+#if UNITY_EDITOR
+        private void OnDrawGizmosSelected()
+        {
+            // 绘制扫描区域
+            Gizmos.color = new Color(0f, 1f, 0f, 0.2f);
+            Gizmos.DrawWireCube(config.ScanCenter, config.ScanSize);
+
+            if (!IsGenerated) return;
+
+            // 绘制节点
+            foreach (var node in Nodes)
+            {
+                switch (node.NodeType)
+                {
+                    case PlatformNodeType.LeftEdge:
+                    case PlatformNodeType.RightEdge:
+                        Gizmos.color = Color.yellow;
+                        break;
+                    case PlatformNodeType.OneWay:
+                        Gizmos.color = Color.cyan;
+                        break;
+                    default:
+                        Gizmos.color = node.IsOneWay ? Color.cyan : Color.green;
+                        break;
+                }
+
+                Gizmos.DrawSphere(node.Position, 0.2f);
+            }
+
+            // 绘制链接
+            foreach (var link in Links)
+            {
+                var fromNode = GetNode(link.FromNodeId);
+                var toNode = GetNode(link.ToNodeId);
+
+                if (!fromNode.HasValue || !toNode.HasValue) continue;
+
+                switch (link.LinkType)
+                {
+                    case PlatformLinkType.Walk:
+                        Gizmos.color = Color.green;
+                        break;
+                    case PlatformLinkType.Jump:
+                        Gizmos.color = Color.yellow;
+                        break;
+                    case PlatformLinkType.Fall:
+                    case PlatformLinkType.DropThrough:
+                        Gizmos.color = Color.blue;
+                        break;
+                }
+
+                Gizmos.DrawLine(fromNode.Value.Position, toNode.Value.Position);
+            }
         }
 #endif
     }
