@@ -128,5 +128,5 @@ jobs:
         with:
           name: Unity Test Report
           path: TestResults/*.xml
-          reporter: dotnet-nunit
+          reporter: java-junit
           fail-on-error: true
