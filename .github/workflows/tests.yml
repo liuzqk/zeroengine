@@ -78,7 +78,10 @@ jobs:
           {
             "dependencies": {
               $DEPS
-            }
+            },
+            "testables": [
+              "com.zerogamestudio.zeroengine"
+            ]
           }
           EOF
 
