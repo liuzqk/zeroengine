@@ -23,7 +23,7 @@ namespace ZeroEngine.Tests.Combat
         public void Calculate_NullTarget_ReturnsZeroDamage()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical);
+            var damage = DamageData.Physical(100f);
 
             // Act
             var result = _calculator.Calculate(damage, null);
@@ -36,7 +36,7 @@ namespace ZeroEngine.Tests.Combat
         public void Calculate_BasicDamage_ReturnsCorrectValue()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical);
+            var damage = DamageData.Physical(100f);
             var target = new MockCombatant();
 
             // Act
@@ -60,7 +60,7 @@ namespace ZeroEngine.Tests.Combat
             // 100 damage * (1 - 0.5) = 50
 
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical);
+            var damage = DamageData.Physical(100f);
             var target = new MockCombatant();
 
             // Act
@@ -78,7 +78,7 @@ namespace ZeroEngine.Tests.Combat
         public void Calculate_IgnoreArmor_BypassesReduction()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical, DamageFlags.IgnoreArmor);
+            var damage = DamageData.Physical(100f).WithFlags(DamageFlags.IgnoreArmor);
             var target = new MockCombatant();
 
             // Act
@@ -100,7 +100,7 @@ namespace ZeroEngine.Tests.Combat
         public void Calculate_MagicalDamage_UsesMagicResist()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Magical);
+            var damage = DamageData.Magical(100f, DamageType.Fire);
             var target = new MockCombatant();
 
             // Act
@@ -118,7 +118,7 @@ namespace ZeroEngine.Tests.Combat
         public void Calculate_TrueDamage_IgnoresAllDefense()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.True);
+            var damage = DamageData.True(100f);
             var target = new MockCombatant();
 
             // Act
@@ -140,7 +140,7 @@ namespace ZeroEngine.Tests.Combat
         public void DamageResult_Immune_HasCorrectFlags()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical);
+            var damage = DamageData.Physical(100f);
 
             // Act
             var result = DamageResult.Immune(damage);
@@ -154,7 +154,7 @@ namespace ZeroEngine.Tests.Combat
         public void DamageResult_Dodged_HasCorrectFlags()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical);
+            var damage = DamageData.Physical(100f);
 
             // Act
             var result = DamageResult.Dodged(damage);
@@ -176,7 +176,7 @@ namespace ZeroEngine.Tests.Combat
 
             // Act
             _calculator.RegisterProcessor(processor);
-            var damage = new DamageData(100f, DamageType.Physical);
+            var damage = DamageData.Physical(100f);
             var result = _calculator.Calculate(damage, new MockCombatant());
 
             // Assert - processor 应该被调用
@@ -192,7 +192,7 @@ namespace ZeroEngine.Tests.Combat
 
             // Act
             _calculator.UnregisterProcessor(processor);
-            var damage = new DamageData(100f, DamageType.Physical);
+            var damage = DamageData.Physical(100f);
             _calculator.Calculate(damage, new MockCombatant());
 
             // Assert
@@ -207,7 +207,9 @@ namespace ZeroEngine.Tests.Combat
         public void DamageData_HasFlag_ReturnsCorrectly()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical, DamageFlags.IgnoreArmor | DamageFlags.Lifesteal);
+            var damage = DamageData.Physical(100f)
+                .WithFlags(DamageFlags.IgnoreArmor)
+                .WithFlags(DamageFlags.Lifesteal);
 
             // Assert
             Assert.IsTrue(damage.HasFlag(DamageFlags.IgnoreArmor));
@@ -219,12 +221,34 @@ namespace ZeroEngine.Tests.Combat
         public void DamageData_HasDamageType_ReturnsCorrectly()
         {
             // Arrange
-            var damage = new DamageData(100f, DamageType.Physical | DamageType.Fire);
+            var damage = DamageData.Magical(100f, DamageType.Fire);
 
             // Assert
-            Assert.IsTrue(damage.HasDamageType(DamageType.Physical));
+            Assert.IsTrue(damage.HasDamageType(DamageType.Magical));
             Assert.IsTrue(damage.HasDamageType(DamageType.Fire));
-            Assert.IsFalse(damage.HasDamageType(DamageType.Magical));
+            Assert.IsFalse(damage.HasDamageType(DamageType.Physical));
+        }
+
+        [Test]
+        public void DamageData_Physical_CreatesCorrectType()
+        {
+            // Act
+            var damage = DamageData.Physical(50f);
+
+            // Assert
+            Assert.AreEqual(50f, damage.BaseDamage);
+            Assert.IsTrue(damage.HasDamageType(DamageType.Physical));
+        }
+
+        [Test]
+        public void DamageData_True_IgnoresArmor()
+        {
+            // Act
+            var damage = DamageData.True(75f);
+
+            // Assert
+            Assert.AreEqual(75f, damage.BaseDamage);
+            Assert.IsTrue(damage.HasFlag(DamageFlags.IgnoreArmor));
         }
 
         #endregion
