@@ -133,6 +133,9 @@ namespace ZeroEngine.Pathfinding2D
         /// <summary>是否是单向链接</summary>
         public bool IsOneWay;
 
+        /// <summary>跳跃轨迹点（仅 Jump 类型有效，用于可视化和碰撞检测）</summary>
+        public Vector2[] JumpTrajectory;
+
         /// <summary>
         /// 创建行走链接
         /// </summary>
@@ -152,7 +155,7 @@ namespace ZeroEngine.Pathfinding2D
         /// <summary>
         /// 创建跳跃链接
         /// </summary>
-        public static PlatformLinkData CreateJump(int from, int to, float velocityY, float velocityX, float duration)
+        public static PlatformLinkData CreateJump(int from, int to, float velocityY, float velocityX, float duration, Vector2[] trajectory = null)
         {
             return new PlatformLinkData
             {
@@ -163,7 +166,8 @@ namespace ZeroEngine.Pathfinding2D
                 JumpVelocityY = velocityY,
                 JumpVelocityX = velocityX,
                 Duration = duration,
-                IsOneWay = true // 跳跃链接通常是单向的
+                IsOneWay = true, // 跳跃链接通常是单向的
+                JumpTrajectory = trajectory
             };
         }
 

@@ -48,6 +48,9 @@ namespace ZeroEngine.Pathfinding2D
         /// <summary>是否是单向平台</summary>
         public bool IsOneWayPlatform;
 
+        /// <summary>跳跃轨迹点（仅 Jump 类型有效，用于可视化）</summary>
+        public Vector2[] JumpTrajectory;
+
         /// <summary>
         /// 创建行走指令
         /// </summary>
@@ -66,7 +69,7 @@ namespace ZeroEngine.Pathfinding2D
         /// <summary>
         /// 创建跳跃指令
         /// </summary>
-        public static MoveCommand Jump(Vector3 target, float velocityY, float velocityX = 0f, float duration = 0f)
+        public static MoveCommand Jump(Vector3 target, float velocityY, float velocityX = 0f, float duration = 0f, Vector2[] trajectory = null)
         {
             return new MoveCommand
             {
@@ -74,7 +77,8 @@ namespace ZeroEngine.Pathfinding2D
                 Target = target,
                 JumpVelocityY = velocityY,
                 JumpVelocityX = velocityX,
-                EstimatedDuration = duration
+                EstimatedDuration = duration,
+                JumpTrajectory = trajectory
             };
         }
 

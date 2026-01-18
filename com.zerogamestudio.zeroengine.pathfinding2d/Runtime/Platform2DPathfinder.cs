@@ -640,7 +640,8 @@ namespace ZeroEngine.Pathfinding2D
                             toNode.Value.Position,
                             link.JumpVelocityY,
                             link.JumpVelocityX,
-                            link.Duration
+                            link.Duration,
+                            link.JumpTrajectory  // 传递预计算的轨迹点用于可视化
                         ));
                         break;
 

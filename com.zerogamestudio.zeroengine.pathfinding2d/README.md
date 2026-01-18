@@ -4,7 +4,7 @@
 
 ## 版本
 
-- **当前版本**: 1.2.0
+- **当前版本**: 1.3.0
 - **依赖**: ZeroEngine.Core >= 1.0.0
 
 ## 概述
@@ -18,6 +18,7 @@
 - **A* 寻路**：内置 A* 路径搜索算法
 - **MoveCommand 系统**：将路径转换为具体移动指令
 - **编辑器可视化**：在 Scene 视图实时预览节点和链接
+- **调试可视化系统** (v1.3.0+)：运行时 Gizmo 绘制完整路径轨迹（含跳跃抛物线）
 - **空间索引加速** (v1.1.0+)：使用 SpatialGrid2D 将节点查询从 O(n) 优化到 O(k)
 - **同平台快速路径** (v1.1.0+)：起终点在同一平台时跳过 A*，直接生成 Walk 指令
 - **路径验证与回退** (v1.1.0+)：检测路径过期/目标移动/偏离，A* 失败时返回部分路径
@@ -175,6 +176,36 @@ public override void OnPhysicsUpdate()
 - ZeroEngine.Core >= 2.0.0
 
 ## 版本历史
+
+### 1.3.0 - 2026-01-18
+
+**调试可视化系统**
+- 新增 `PathfindingDebugger` - 运行时 Gizmo 可视化组件
+- 新增 `PathfindingDebugConfig` - 颜色、尺寸、开关配置
+- 新增 `PathfindingDebugGUI` - 运行时状态 GUI 面板（可选）
+- 跳跃轨迹缓存 - `PlatformLinkData.JumpTrajectory` 和 `MoveCommand.JumpTrajectory`
+- 轨迹预计算 - 链接生成时缓存抛物线轨迹点，避免每帧重算
+
+**颜色编码方案**
+| 颜色 | 移动类型 |
+|------|----------|
+| 绿色 | Walk 行走 |
+| 黄色 | Jump 跳跃（抛物线） |
+| 青色 | Fall 下落 |
+| 蓝色 | DropDown 穿透平台 |
+| 红色 | 完整路径预览 |
+| 品红 | 路径终点 |
+| 灰色 | 已完成路径段 |
+
+**使用方法**
+```csharp
+// 添加 PathfindingDebugger 组件到寻路器同一 GameObject
+var debugger = gameObject.AddComponent<PathfindingDebugger>();
+debugger.Pathfinder = pathfinder;
+
+// 可选：添加运行时 GUI 面板
+var gui = gameObject.AddComponent<PathfindingDebugGUI>();
+```
 
 ### 1.2.0 - 2026-01-18
 

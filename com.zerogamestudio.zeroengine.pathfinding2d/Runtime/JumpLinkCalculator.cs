@@ -213,13 +213,14 @@ namespace ZeroEngine.Pathfinding2D
                 return false;
             }
 
-            // 创建跳跃链接
+            // 创建跳跃链接（包含预计算的轨迹点用于可视化）
             var link = PlatformLinkData.CreateJump(
                 from.NodeId,
                 to.NodeId,
                 result.VelocityY,
                 result.VelocityX,
-                result.FlightTime
+                result.FlightTime,
+                result.Trajectory
             );
 
             graphGenerator.Links.Add(link);
