@@ -555,6 +555,46 @@ namespace ZeroEngine.Pathfinding2D
         }
 
         /// <summary>
+        /// 查找指定平台上的最近节点（优先脚下平台）
+        /// 解决召唤物在突出平台下方时错误选择头顶节点的问题
+        /// </summary>
+        /// <param name="position">查询位置</param>
+        /// <param name="preferredPlatform">优先选择的平台（通常是脚下平台）</param>
+        /// <param name="maxDistance">最大搜索距离</param>
+        /// <returns>找到的节点，优先返回指定平台上的节点</returns>
+        public PlatformNodeData? FindNearestNodeOnPlatform(Vector2 position, Collider2D preferredPlatform, float maxDistance)
+        {
+            // 1. 先在 preferredPlatform 上找最近节点
+            if (preferredPlatform != null)
+            {
+                PlatformNodeData? bestOnPlatform = null;
+                float bestDist = maxDistance;
+
+                foreach (var node in Nodes)
+                {
+                    if (node.PlatformCollider == preferredPlatform)
+                    {
+                        float dist = Vector2.Distance(position, node.Position);
+                        if (dist < bestDist)
+                        {
+                            bestDist = dist;
+                            bestOnPlatform = node;
+                        }
+                    }
+                }
+
+                // 如果在指定平台上找到节点，直接返回
+                if (bestOnPlatform.HasValue)
+                {
+                    return bestOnPlatform;
+                }
+            }
+
+            // 2. 回退到原逻辑：查找任意平台上的最近节点
+            return FindNearestNode(position, maxDistance);
+        }
+
+        /// <summary>
         /// 查找最近的节点（使用空间索引加速）
         /// </summary>
         public PlatformNodeData? FindNearestNode(Vector2 position, float maxDistance = float.MaxValue)

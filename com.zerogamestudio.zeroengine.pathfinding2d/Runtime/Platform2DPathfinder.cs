@@ -138,8 +138,11 @@ namespace ZeroEngine.Pathfinding2D
             }
 
             // 查找起点和终点节点
-            var startNode = graphGenerator.FindNearestNode(start, config.MaxNodeSearchRadius);
-            var endNode = graphGenerator.FindNearestNode(end, config.MaxNodeSearchRadius);
+            // 优先选择脚下平台上的节点，避免错误选择头顶平台节点
+            var startPlatform = DetectPlatformBelow(start);
+            var endPlatform = DetectPlatformBelow(end);
+            var startNode = graphGenerator.FindNearestNodeOnPlatform(start, startPlatform, config.MaxNodeSearchRadius);
+            var endNode = graphGenerator.FindNearestNodeOnPlatform(end, endPlatform, config.MaxNodeSearchRadius);
 
             if (!startNode.HasValue || !endNode.HasValue)
             {
