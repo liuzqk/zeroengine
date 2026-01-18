@@ -117,15 +117,15 @@ namespace ZeroEngine.Tests.Combat
         [Test]
         public void Calculate_TrueDamage_IgnoresAllDefense()
         {
-            // Arrange
-            var damage = DamageData.True(100f);
+            // Arrange - True damage 应无视护甲，但需要同时无视闪避才能测试
+            var damage = DamageData.True(100f).WithFlags(DamageFlags.IgnoreDodge);
             var target = new MockCombatant();
 
-            // Act
+            // Act - 只返回防御属性，闪避为0
             var result = _calculator.Calculate(
                 damage,
                 target,
-                defenderStatGetter: _ => 1000f // 高防御
+                defenderStatGetter: stat => stat == "Armor" || stat == "MagicResist" ? 1000f : 0f
             );
 
             // Assert - True damage 不受护甲/魔抗影响

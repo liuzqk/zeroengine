@@ -189,6 +189,8 @@ namespace ZeroEngine.Tests.Data
         {
             // Arrange
             var stat = new Stat(100f);
+            _ = stat.Value; // 初始化缓存值为 100f
+
             StatChangedEventArgs? eventArgs = null;
             stat.OnValueChanged += args => eventArgs = args;
 
