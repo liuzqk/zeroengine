@@ -67,6 +67,16 @@ namespace ZeroEngine.Pathfinding2D.Editor
             {
                 SceneView.RepaintAll();
             }
+
+            EditorGUILayout.Space(10);
+
+            // 诊断按钮
+            GUI.backgroundColor = new Color(1f, 0.8f, 0.4f);
+            if (GUILayout.Button("输出详细诊断报告", GUILayout.Height(30)))
+            {
+                generator.GenerateDiagnosticReport();
+            }
+            GUI.backgroundColor = Color.white;
         }
 
         [DrawGizmo(GizmoType.Selected | GizmoType.NonSelected)]
