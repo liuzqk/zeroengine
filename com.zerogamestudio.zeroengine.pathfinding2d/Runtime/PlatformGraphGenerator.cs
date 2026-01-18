@@ -271,13 +271,12 @@ namespace ZeroEngine.Pathfinding2D
             var edges = new List<(float left, float right, float y)>();
             const float slopeThreshold = 0.5f; // 斜率阈值，放宽以支持斜坡
             const float mergeThreshold = 0.1f; // Y 坐标合并阈值
-            const float rayCheckOffset = 0.1f; // 射线起点偏移
+            const float standingHeight = 1.0f; // 站立所需高度
+            const float rayLength = 1.5f; // 射线长度
 
             if (points.Count < 3) return edges;
 
             int count = points.Count;
-
-            Debug.Log($"[FindTopEdges] 多边形点数: {count}");
 
             for (int i = 0; i < count; i++)
             {
@@ -299,13 +298,18 @@ namespace ZeroEngine.Pathfinding2D
                 float midX = (p1.x + p2.x) / 2f;
                 float midY = (p1.y + p2.y) / 2f;
 
-                // 从边的上方向下发射射线，检测这条边是否是可站立表面
-                Vector2 rayOrigin = new Vector2(midX, midY + rayCheckOffset);
-                RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayCheckOffset * 3f, config.AllPlatformLayers);
+                // 从边的上方较高处向下发射射线
+                // 如果射线能命中这条边，且射线起点到边之间没有其他障碍物，说明是可站立表面
+                Vector2 rayOrigin = new Vector2(midX, midY + standingHeight);
+                RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayLength, config.AllPlatformLayers);
 
-                bool isTopEdge = hit.collider != null && Mathf.Abs(hit.point.y - midY) < 0.2f;
-
-                Debug.Log($"[FindTopEdges] 边 {i}: ({p1.x:F1},{p1.y:F1})->({p2.x:F1},{p2.y:F1}), 射线命中: {hit.collider != null}, 是顶部: {isTopEdge}");
+                // 判断条件：
+                // 1. 射线命中了碰撞体
+                // 2. 命中点接近这条边的 Y 坐标（误差 0.2 以内）
+                // 3. 射线起点到命中点之间有足够的空间（至少 standingHeight * 0.8）
+                bool isTopEdge = hit.collider != null &&
+                                 Mathf.Abs(hit.point.y - midY) < 0.2f &&
+                                 (rayOrigin.y - hit.point.y) > standingHeight * 0.8f;
 
                 if (isTopEdge)
                 {
@@ -316,10 +320,54 @@ namespace ZeroEngine.Pathfinding2D
                 }
             }
 
-            Debug.Log($"[FindTopEdges] 找到 {edges.Count} 条顶部边缘");
+            // 合并相邻的边，并去除 Y 坐标过于接近的重复边
+            var merged = MergeAdjacentEdges(edges, mergeThreshold);
+            return DeduplicateCloseEdges(merged, 0.5f);
+        }
 
-            // 合并相邻的边
-            return MergeAdjacentEdges(edges, mergeThreshold);
+        /// <summary>
+        /// 去除 Y 坐标过于接近的重复边（保留较高的那条）
+        /// </summary>
+        private List<(float left, float right, float y)> DeduplicateCloseEdges(
+            List<(float left, float right, float y)> edges, float yThreshold)
+        {
+            if (edges.Count <= 1) return edges;
+
+            // 按 X 范围分组，检查是否有 Y 坐标过于接近的边
+            var result = new List<(float left, float right, float y)>();
+            var sorted = new List<(float left, float right, float y)>(edges);
+            sorted.Sort((a, b) => a.left.CompareTo(b.left));
+
+            foreach (var edge in sorted)
+            {
+                bool isDuplicate = false;
+                for (int i = 0; i < result.Count; i++)
+                {
+                    var existing = result[i];
+                    // 检查 X 范围是否重叠
+                    bool xOverlap = edge.left < existing.right && edge.right > existing.left;
+                    // 检查 Y 是否过于接近
+                    bool yClose = Mathf.Abs(edge.y - existing.y) < yThreshold;
+
+                    if (xOverlap && yClose)
+                    {
+                        // 保留 Y 较高的那条
+                        if (edge.y > existing.y)
+                        {
+                            result[i] = edge;
+                        }
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+
+                if (!isDuplicate)
+                {
+                    result.Add(edge);
+                }
+            }
+
+            return result;
         }
 
 
