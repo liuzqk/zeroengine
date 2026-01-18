@@ -237,9 +237,28 @@ namespace ZeroEngine.Tests.Combat
     /// </summary>
     public class MockCombatant : ICombatant
     {
+        public string CombatantId => "mock_001";
+        public string DisplayName => "MockCombatant";
+        public int TeamId => 1;
         public bool IsAlive => true;
-        public CombatTeam Team => CombatTeam.Enemy;
+        public bool IsTargetable => true;
+        public UnityEngine.GameObject GameObject => null;
         public UnityEngine.Transform Transform => null;
+
+        public UnityEngine.Vector3 GetCombatPosition() => UnityEngine.Vector3.zero;
+
+        public DamageResult TakeDamage(DamageData damage)
+        {
+            return new DamageResult(damage, damage.BaseDamage);
+        }
+
+        public float ReceiveHeal(float amount, ICombatant source = null)
+        {
+            return amount;
+        }
+
+        public void OnEnterCombat() { }
+        public void OnExitCombat() { }
     }
 
     /// <summary>
