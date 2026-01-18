@@ -123,9 +123,10 @@ jobs:
           retention-days: 14
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v4
+        uses: dorny/test-reporter@v1
         if: always()
         with:
-          report_paths: '**/TestResults/*.xml'
-          check_name: Unity Test Report
-          fail_on_failure: true
+          name: Unity Test Report
+          path: TestResults/*.xml
+          reporter: dotnet-nunit
+          fail-on-error: true
