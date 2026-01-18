@@ -84,13 +84,18 @@ namespace ZeroEngine.AutoBattle.Skill
         public void UpdateCooldowns(float deltaTime)
         {
             var keysToRemove = new List<string>();
+            var keysToUpdate = new List<string>(_cooldowns.Keys);
 
-            foreach (var kvp in _cooldowns)
+            foreach (var key in keysToUpdate)
             {
-                _cooldowns[kvp.Key] = kvp.Value - deltaTime;
-                if (_cooldowns[kvp.Key] <= 0)
+                float newValue = _cooldowns[key] - deltaTime;
+                if (newValue <= 0)
                 {
-                    keysToRemove.Add(kvp.Key);
+                    keysToRemove.Add(key);
+                }
+                else
+                {
+                    _cooldowns[key] = newValue;
                 }
             }
 

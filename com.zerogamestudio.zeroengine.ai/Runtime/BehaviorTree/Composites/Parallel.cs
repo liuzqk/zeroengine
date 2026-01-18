@@ -62,7 +62,13 @@ namespace ZeroEngine.BehaviorTree
         protected override void OnStart(BTContext context)
         {
             base.OnStart(context);
-            // 仅重置状态，不改变列表大小（零 GC）
+            // 确保 _childStates 与 _children 大小同步
+            // 修复：当通过基类 AddChild 添加子节点时，_childStates 可能未同步扩容
+            while (_childStates.Count < _children.Count)
+            {
+                _childStates.Add(NodeState.Running);
+            }
+            // 重置所有状态
             for (int i = 0; i < _childStates.Count; i++)
             {
                 _childStates[i] = NodeState.Running;

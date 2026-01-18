@@ -99,16 +99,56 @@ namespace ZeroEngine.PvP.Matching
         public List<Snapshot.TeamSnapshot> FindOpponents(int playerPower, int count, int floorLevel = 1)
         {
             var results = new List<Snapshot.TeamSnapshot>();
-            var used = new HashSet<string>();
+            if (_candidatePool.Count == 0 || count <= 0)
+                return results;
 
-            for (int i = 0; i < count && i < _candidatePool.Count; i++)
+            // 计算战力范围
+            float tolerance = Config.PowerTolerance + floorLevel * Config.FloorToleranceBonus;
+            int minPower = Mathf.RoundToInt(playerPower * (1f - tolerance));
+            int maxPower = Mathf.RoundToInt(playerPower * (1f + tolerance));
+
+            // 筛选符合条件的候选
+            var validCandidates = new List<Snapshot.TeamSnapshot>();
+            foreach (var candidate in _candidatePool)
             {
-                var opponent = FindOpponent(playerPower, floorLevel);
-                if (opponent != null && !used.Contains(opponent.SnapshotId))
+                if (candidate.TotalPower >= minPower && candidate.TotalPower <= maxPower)
                 {
-                    results.Add(opponent);
-                    used.Add(opponent.SnapshotId);
+                    validCandidates.Add(candidate);
                 }
+            }
+
+            // 如果没有完全匹配的，放宽条件
+            if (validCandidates.Count == 0)
+            {
+                minPower = Mathf.RoundToInt(playerPower * 0.5f);
+                maxPower = Mathf.RoundToInt(playerPower * 1.5f);
+
+                foreach (var candidate in _candidatePool)
+                {
+                    if (candidate.TotalPower >= minPower && candidate.TotalPower <= maxPower)
+                    {
+                        validCandidates.Add(candidate);
+                    }
+                }
+            }
+
+            // 仍然没有就用全部
+            if (validCandidates.Count == 0)
+            {
+                validCandidates.AddRange(_candidatePool);
+            }
+
+            // 打乱顺序后取前 count 个
+            for (int i = validCandidates.Count - 1; i > 0; i--)
+            {
+                int j = _random.Next(i + 1);
+                (validCandidates[i], validCandidates[j]) = (validCandidates[j], validCandidates[i]);
+            }
+
+            int resultCount = Mathf.Min(count, validCandidates.Count);
+            for (int i = 0; i < resultCount; i++)
+            {
+                results.Add(validCandidates[i]);
             }
 
             return results;

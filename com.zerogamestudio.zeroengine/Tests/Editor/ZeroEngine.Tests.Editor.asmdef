@@ -3,6 +3,9 @@
     "rootNamespace": "ZeroEngine.Tests",
     "references": [
         "ZeroEngine",
+        "ZeroEngine.Core",
+        "ZeroEngine.Data",
+        "ZeroEngine.Combat",
         "ZeroEngine.Editor",
         "ZeroEngine.AI",
         "ZeroEngine.Narrative",

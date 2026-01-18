@@ -96,26 +96,31 @@ namespace ZeroEngine.BehaviorTree
             if (typeof(T) == typeof(int))
             {
                 _intData[key] = (int)(object)value;
+                OnValueChanged?.Invoke(key, value);
                 return;
             }
             if (typeof(T) == typeof(float))
             {
                 _floatData[key] = (float)(object)value;
+                OnValueChanged?.Invoke(key, value);
                 return;
             }
             if (typeof(T) == typeof(bool))
             {
                 _boolData[key] = (bool)(object)value;
+                OnValueChanged?.Invoke(key, value);
                 return;
             }
             if (typeof(T) == typeof(Vector3))
             {
                 _vector3Data[key] = (Vector3)(object)value;
+                OnValueChanged?.Invoke(key, value);
                 return;
             }
             if (typeof(T) == typeof(Vector2))
             {
                 _vector2Data[key] = (Vector2)(object)value;
+                OnValueChanged?.Invoke(key, value);
                 return;
             }
 
