@@ -222,6 +222,7 @@ namespace ZeroEngine.Pathfinding2D
 
         /// <summary>
         /// 检查是否可以直接行走到目标（同一平台）
+        /// 增加容错：允许1次检测失败，多高度射线检测
         /// </summary>
         public static bool CanWalkTo(Vector2 start, Vector2 end, LayerMask groundMask, float maxHeightDiff = 0.5f)
         {
@@ -235,19 +236,79 @@ namespace ZeroEngine.Pathfinding2D
             float distance = Vector2.Distance(start, end);
             int checkCount = Mathf.CeilToInt(distance / 0.5f);
 
+            int missCount = 0;
+            const int maxMissAllowed = 1;  // 允许1次检测失败，增加容错
+
             for (int i = 0; i <= checkCount; i++)
             {
                 float t = (float)i / checkCount;
                 Vector2 checkPos = Vector2.Lerp(start, end, t);
 
-                // 向下检测地面
-                RaycastHit2D hit = Physics2D.Raycast(checkPos + Vector2.up * 0.5f, Vector2.down, 1f, groundMask);
-                if (hit.collider == null)
+                // 多高度射线检测，增加鲁棒性
+                bool foundGround = false;
+                for (float offset = 0.3f; offset <= 1.0f; offset += 0.3f)
                 {
-                    return false; // 有间隙
+                    RaycastHit2D hit = Physics2D.Raycast(
+                        checkPos + Vector2.up * offset,
+                        Vector2.down,
+                        offset + 0.5f,
+                        groundMask
+                    );
+
+                    if (hit.collider != null)
+                    {
+                        foundGround = true;
+                        break;
+                    }
+                }
+
+                if (!foundGround)
+                {
+                    missCount++;
+                    if (missCount > maxMissAllowed)
+                        return false;
                 }
             }
 
+            return true;
+        }
+
+        /// <summary>
+        /// 验证跳跃轨迹是否有障碍物阻挡（排除起点和终点平台）
+        /// </summary>
+        /// <param name="trajectory">轨迹点数组</param>
+        /// <param name="obstacleMask">障碍物层</param>
+        /// <param name="colliderRadius">碰撞体半径</param>
+        /// <param name="fromPlatform">起点平台碰撞体（排除）</param>
+        /// <param name="toPlatform">终点平台碰撞体（排除）</param>
+        /// <returns>是否通畅</returns>
+        public static bool ValidateTrajectory(
+            Vector2[] trajectory,
+            LayerMask obstacleMask,
+            float colliderRadius,
+            Collider2D fromPlatform,
+            Collider2D toPlatform)
+        {
+            if (trajectory == null || trajectory.Length < 2)
+                return false;
+
+            for (int i = 0; i < trajectory.Length - 1; i++)
+            {
+                Vector2 from = trajectory[i];
+                Vector2 to = trajectory[i + 1];
+                float dist = Vector2.Distance(from, to);
+
+                RaycastHit2D hit = Physics2D.CircleCast(
+                    from, colliderRadius, (to - from).normalized, dist, obstacleMask);
+
+                if (hit.collider != null)
+                {
+                    // 排除起点和目标平台，避免误判
+                    if (hit.collider == fromPlatform || hit.collider == toPlatform)
+                        continue;
+                    return false;
+                }
+            }
             return true;
         }
     }

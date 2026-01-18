@@ -165,8 +165,8 @@ namespace ZeroEngine.Pathfinding2D
                     }
                 }
 
-                // 检查穿透单向平台下落（边缘节点或单向平台节点）
-                if (isEdgeNode && fromNode.IsOneWay)
+                // 检查穿透单向平台下落（单向平台任意位置都可下穿，不限于边缘节点）
+                if (fromNode.IsOneWay)
                 {
                     var dropLinks = CreateDropThroughLinks(fromNode, nodes, obstacleLayer);
                     dropLinksCreated += dropLinks;
@@ -201,8 +201,13 @@ namespace ZeroEngine.Pathfinding2D
                 return false;
             }
 
-            // 验证轨迹无障碍
-            if (!JumpMovementHandler.ValidateTrajectory(result.Trajectory, obstacleLayer, config.TrajectoryCheckRadius))
+            // 验证轨迹无障碍（排除起点和终点平台）
+            if (!JumpMovementHandler.ValidateTrajectory(
+                result.Trajectory,
+                obstacleLayer,
+                config.TrajectoryCheckRadius,
+                from.PlatformCollider,
+                to.PlatformCollider))
             {
                 failReason = "trajectory";
                 return false;
@@ -314,6 +319,34 @@ namespace ZeroEngine.Pathfinding2D
         {
             ClearJumpLinks();
             GenerateJumpLinks();
+        }
+
+        /// <summary>
+        /// 验证物理配置是否与角色 Rigidbody2D 匹配
+        /// </summary>
+        /// <param name="characterRb">角色的 Rigidbody2D</param>
+        /// <returns>是否匹配</returns>
+        public bool ValidatePhysicsConfig(Rigidbody2D characterRb)
+        {
+            if (characterRb == null) return false;
+
+            if (Mathf.Abs(characterRb.gravityScale - config.GravityScale) > 0.1f)
+            {
+                Debug.LogWarning($"[JumpLinkCalculator] GravityScale 不匹配! " +
+                    $"配置: {config.GravityScale}, 实际: {characterRb.gravityScale}");
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 同步物理配置到角色 Rigidbody2D 的实际值
+        /// </summary>
+        /// <param name="characterRb">角色的 Rigidbody2D</param>
+        public void SyncPhysicsConfig(Rigidbody2D characterRb)
+        {
+            if (characterRb == null) return;
+            config.GravityScale = characterRb.gravityScale;
         }
 
 #if UNITY_EDITOR
