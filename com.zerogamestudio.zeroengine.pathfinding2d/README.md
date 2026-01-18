@@ -4,8 +4,8 @@
 
 ## 版本
 
-- **当前版本**: 1.1.0
-- **依赖**: ZeroEngine.Core >= 2.0.0
+- **当前版本**: 1.2.0
+- **依赖**: ZeroEngine.Core >= 1.0.0
 
 ## 概述
 
@@ -175,6 +175,19 @@ public override void OnPhysicsUpdate()
 - ZeroEngine.Core >= 2.0.0
 
 ## 版本历史
+
+### 1.2.0 - 2026-01-18
+
+**新增功能**
+- 诊断报告系统 - `GenerateDiagnosticReport()` 输出详细平台图信息
+- 跳跃链接诊断 - 输出跳跃尝试次数、失败原因分类
+- Odin Inspector 支持 - 诊断按钮在 Inspector 中直接点击
+
+**诊断报告内容**
+- 扫描配置（中心、尺寸、层级）
+- 扫描到的碰撞体列表（名称、类型、Bounds、Y范围）
+- 节点按高度分布及 X 范围
+- 链接统计（Walk/Jump/Fall/DropThrough）
 
 ### 1.1.0 - 2026-01-16
 
