@@ -267,7 +267,16 @@ namespace ZeroEngine.Spawner
     [System.Serializable]
     public class RewardItem
     {
-        public Inventory.InventoryItemSO Item;
+        /// <summary>
+        /// 物品数据（由具体项目实现的 ScriptableObject）
+        /// </summary>
+        public ScriptableObject Item;
+
+        /// <summary>
+        /// 物品ID（备用，当不使用 SO 时）
+        /// </summary>
+        public string ItemId;
+
         public int Amount = 1;
         public float DropChance = 1f;
     }

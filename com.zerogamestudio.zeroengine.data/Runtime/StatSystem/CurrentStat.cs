@@ -54,7 +54,7 @@ namespace ZeroEngine.StatSystem
         /// <summary>
         /// 最大值（浮点，来自 Stat.Value）
         /// </summary>
-        public float MaxValue => base.Value;
+        public new float MaxValue => base.Value;
 
         /// <summary>
         /// 当前值百分比 (0-1)

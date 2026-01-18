@@ -498,6 +498,17 @@
         "com.zerogamestudio.zeroengine.persistence": "2.0.0"
       }
     },
+    "com.zerogamestudio.zeroengine.autobattle": {
+      "version": "file:com.zerogamestudio.zeroengine.autobattle",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.zerogamestudio.zeroengine.core": "2.0.0",
+        "com.zerogamestudio.zeroengine.combat": "2.0.0",
+        "com.zerogamestudio.zeroengine.data": "2.0.0",
+        "com.zerogamestudio.zeroengine.ai": "2.0.0"
+      }
+    },
     "com.zerogamestudio.zeroengine.character": {
       "version": "file:com.zerogamestudio.zeroengine.character",
       "depth": 0,
@@ -529,6 +540,15 @@
       "source": "embedded",
       "dependencies": {
         "com.zerogamestudio.zeroengine.core": "2.0.0"
+      }
+    },
+    "com.zerogamestudio.zeroengine.dungeon": {
+      "version": "file:com.zerogamestudio.zeroengine.dungeon",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.zerogamestudio.zeroengine.core": "2.0.0",
+        "com.zerogamestudio.zeroengine.data": "2.0.0"
       }
     },
     "com.zerogamestudio.zeroengine.economy": {
@@ -584,12 +604,29 @@
         "com.zerogamestudio.zeroengine.core": "2.0.0"
       }
     },
+    "com.zerogamestudio.zeroengine.pathfinding2d": {
+      "version": "file:com.zerogamestudio.zeroengine.pathfinding2d",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.zerogamestudio.zeroengine.core": "1.0.0"
+      }
+    },
     "com.zerogamestudio.zeroengine.persistence": {
       "version": "file:com.zerogamestudio.zeroengine.persistence",
       "depth": 0,
       "source": "embedded",
       "dependencies": {
         "com.zerogamestudio.zeroengine.core": "2.0.0"
+      }
+    },
+    "com.zerogamestudio.zeroengine.pvp": {
+      "version": "file:com.zerogamestudio.zeroengine.pvp",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.zerogamestudio.zeroengine.core": "2.0.0",
+        "com.zerogamestudio.zeroengine.autobattle": "1.0.0"
       }
     },
     "com.zerogamestudio.zeroengine.rpg": {

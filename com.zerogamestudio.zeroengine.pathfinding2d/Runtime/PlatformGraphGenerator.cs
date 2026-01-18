@@ -483,25 +483,34 @@ namespace ZeroEngine.Pathfinding2D
         /// </summary>
         private void GenerateWalkLinks()
         {
-            // 按平台分组节点
-            var platformNodes = new Dictionary<Collider2D, List<int>>();
+            const float maxYDiff = 0.5f; // 同一行走平面的最大 Y 坐标差异
+            const float maxXGap = 3f; // 相邻节点最大 X 间距（超过则不连接）
+
+            // 按平台 Collider + Y 坐标分组节点
+            // Key: (Collider, Y 坐标取整到 0.5)
+            var platformGroups = new Dictionary<(Collider2D, int), List<int>>();
 
             for (int i = 0; i < Nodes.Count; i++)
             {
                 var node = Nodes[i];
                 if (node.PlatformCollider == null) continue;
 
-                if (!platformNodes.ContainsKey(node.PlatformCollider))
+                // 将 Y 坐标量化到 0.5 单位，用于分组
+                int yGroup = Mathf.RoundToInt(node.Position.y / maxYDiff);
+                var key = (node.PlatformCollider, yGroup);
+
+                if (!platformGroups.ContainsKey(key))
                 {
-                    platformNodes[node.PlatformCollider] = new List<int>();
+                    platformGroups[key] = new List<int>();
                 }
-                platformNodes[node.PlatformCollider].Add(i);
+                platformGroups[key].Add(i);
             }
 
-            // 为每个平台的节点生成行走链接
-            foreach (var kvp in platformNodes)
+            // 为每个平台层的节点生成行走链接
+            foreach (var kvp in platformGroups)
             {
                 var nodeIndices = kvp.Value;
+                if (nodeIndices.Count < 2) continue;
 
                 // 按 X 坐标排序
                 nodeIndices.Sort((a, b) => Nodes[a].Position.x.CompareTo(Nodes[b].Position.x));
@@ -514,6 +523,12 @@ namespace ZeroEngine.Pathfinding2D
 
                     var fromNode = Nodes[fromIndex];
                     var toNode = Nodes[toIndex];
+
+                    // 额外检查：X 间距不能太大，Y 差异不能太大
+                    float xGap = Mathf.Abs(toNode.Position.x - fromNode.Position.x);
+                    float yDiff = Mathf.Abs(toNode.Position.y - fromNode.Position.y);
+
+                    if (xGap > maxXGap || yDiff > maxYDiff) continue;
 
                     float distance = Vector2.Distance(fromNode.Position, toNode.Position);
 
