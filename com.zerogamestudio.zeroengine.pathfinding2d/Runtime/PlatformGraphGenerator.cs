@@ -4,6 +4,9 @@
 
 using System.Collections.Generic;
 using UnityEngine;
+#if ODIN_INSPECTOR
+using Sirenix.OdinInspector;
+#endif
 
 namespace ZeroEngine.Pathfinding2D
 {
@@ -708,7 +711,11 @@ namespace ZeroEngine.Pathfinding2D
         /// <summary>
         /// 生成详细诊断报告
         /// </summary>
+#if ODIN_INSPECTOR
+        [Button("输出详细诊断报告", ButtonSizes.Medium), PropertyOrder(100)]
+#else
         [ContextMenu("输出详细诊断报告")]
+#endif
         public void GenerateDiagnosticReport()
         {
             var sb = new System.Text.StringBuilder();
