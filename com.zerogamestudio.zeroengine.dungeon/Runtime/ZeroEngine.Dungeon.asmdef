@@ -1,0 +1,17 @@
+{
+    "name": "ZeroEngine.Dungeon",
+    "rootNamespace": "ZeroEngine.Dungeon",
+    "references": [
+        "ZeroEngine.Core",
+        "ZeroEngine.Data"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

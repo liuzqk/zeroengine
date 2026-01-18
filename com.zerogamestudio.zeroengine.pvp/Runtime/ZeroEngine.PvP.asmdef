@@ -1,0 +1,17 @@
+{
+    "name": "ZeroEngine.PvP",
+    "rootNamespace": "ZeroEngine.PvP",
+    "references": [
+        "ZeroEngine.Core",
+        "ZeroEngine.AutoBattle"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

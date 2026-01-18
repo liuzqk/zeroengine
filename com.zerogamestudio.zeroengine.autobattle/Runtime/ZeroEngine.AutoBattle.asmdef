@@ -1,0 +1,19 @@
+{
+    "name": "ZeroEngine.AutoBattle",
+    "rootNamespace": "ZeroEngine.AutoBattle",
+    "references": [
+        "ZeroEngine.Core",
+        "ZeroEngine.Combat",
+        "ZeroEngine.Data",
+        "ZeroEngine.AI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

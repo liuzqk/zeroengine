@@ -288,6 +288,8 @@ namespace ZeroEngine.Pathfinding2D
             // Unity 2D 的 Y 轴向上，所以符号需要反转
             bool isCounterClockwise = signedArea < 0;
 
+            Debug.Log($"[FindTopEdges] 多边形点数: {count}, SignedArea: {signedArea:F2}, CCW: {isCounterClockwise}");
+
             for (int i = 0; i < count; i++)
             {
                 var p1 = points[i];
@@ -321,6 +323,8 @@ namespace ZeroEngine.Pathfinding2D
                 // 法线 Y > 0 表示边朝上（顶部边）
                 bool isTopEdge = normal.y > normalYThreshold;
 
+                Debug.Log($"[FindTopEdges] 边 {i}: ({p1.x:F1},{p1.y:F1})->({p2.x:F1},{p2.y:F1}), 法线Y: {normal.y:F2}, 是顶部: {isTopEdge}");
+
                 if (isTopEdge)
                 {
                     float edgeY = (p1.y + p2.y) / 2f;
@@ -329,6 +333,8 @@ namespace ZeroEngine.Pathfinding2D
                     edges.Add((left, right, edgeY));
                 }
             }
+
+            Debug.Log($"[FindTopEdges] 找到 {edges.Count} 条顶部边缘");
 
             // 合并相邻的边
             return MergeAdjacentEdges(edges, mergeThreshold);
