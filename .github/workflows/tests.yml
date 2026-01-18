@@ -41,16 +41,45 @@ jobs:
         with:
           lfs: true
 
+      # 创建最小 Unity 项目结构，将包作为本地包引用
+      - name: Setup Unity Project
+        run: |
+          mkdir -p TestProject/Assets
+          mkdir -p TestProject/Packages
+          mkdir -p TestProject/ProjectSettings
+
+          # 创建 manifest.json，引用本地包
+          cat > TestProject/Packages/manifest.json << 'EOF'
+          {
+            "dependencies": {
+              "com.unity.test-framework": "1.3.9",
+              "com.unity.modules.physics": "1.0.0",
+              "com.unity.modules.physics2d": "1.0.0"
+            }
+          }
+          EOF
+
+          # 创建符号链接到本地包
+          for pkg in com.zerogamestudio.zeroengine*; do
+            if [ -d "$pkg" ]; then
+              ln -s "$(pwd)/$pkg" "TestProject/Packages/$pkg"
+            fi
+          done
+
+          # 创建 ProjectSettings
+          cat > TestProject/ProjectSettings/ProjectVersion.txt << 'EOF'
+          m_EditorVersion: 2022.3.62f1
+          EOF
+
       - name: Cache Unity Library
         uses: actions/cache@v4
         with:
-          path: Library
+          path: TestProject/Library
           key: Library-${{ hashFiles('com.zerogamestudio.zeroengine*/package.json') }}
           restore-keys: |
             Library-
 
       # 使用 GameCI Unity Test Runner
-      # 文档: https://game.ci/docs/github/test-runner
       - name: Run EditMode Tests
         uses: game-ci/unity-test-runner@v4
         id: testRunner
@@ -60,13 +89,10 @@ jobs:
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: 2022.3.62f1
+          projectPath: TestProject
           testMode: EditMode
           artifactsPath: TestResults
           checkName: EditMode Test Results
-          # 使用 packageMode 测试 UPM 包
-          packageMode: true
-          # 通过 customParameters 指定测试程序集
-          customParameters: -assemblyNames ZeroEngine.Tests.Editor
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v4
@@ -74,6 +100,7 @@ jobs:
         with:
           name: Test Results
           path: TestResults
+          if-no-files-found: warn
           retention-days: 14
 
       - name: Publish Test Report
@@ -83,17 +110,3 @@ jobs:
           report_paths: '**/TestResults/*.xml'
           check_name: Unity Test Report
           fail_on_failure: true
-
-  # PlayMode 测试 (可选，需要更多资源)
-  # playmode-test:
-  #   name: Run PlayMode Tests
-  #   runs-on: ubuntu-latest
-  #   needs: test
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #     - name: Run PlayMode Tests
-  #       uses: game-ci/unity-test-runner@v4
-  #       with:
-  #         testMode: PlayMode
-  #         assemblyNames: ZeroEngine.Tests.Runtime
