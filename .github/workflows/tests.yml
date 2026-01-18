@@ -65,6 +65,7 @@ jobs:
           DEPS="$DEPS, \"com.unity.modules.audio\": \"1.0.0\""
           DEPS="$DEPS, \"com.unity.modules.imgui\": \"1.0.0\""
           DEPS="$DEPS, \"com.unity.modules.ui\": \"1.0.0\""
+          DEPS="$DEPS, \"com.unity.modules.particlesystem\": \"1.0.0\""
 
           for pkg in TestProject/Packages/com.zerogamestudio.zeroengine*; do
             if [ -d "$pkg" ]; then
