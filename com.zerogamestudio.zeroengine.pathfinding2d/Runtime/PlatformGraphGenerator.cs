@@ -704,6 +704,143 @@ namespace ZeroEngine.Pathfinding2D
                 Gizmos.DrawLine(fromNode.Value.Position, toNode.Value.Position);
             }
         }
+
+        /// <summary>
+        /// 生成详细诊断报告
+        /// </summary>
+        [ContextMenu("输出详细诊断报告")]
+        public void GenerateDiagnosticReport()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("========== 平台图诊断报告 ==========");
+            sb.AppendLine();
+
+            // 1. 配置信息
+            sb.AppendLine("[配置]");
+            sb.AppendLine($"  扫描中心: {config.ScanCenter}");
+            sb.AppendLine($"  扫描尺寸: {config.ScanSize}");
+            sb.AppendLine($"  节点间距: {config.ActualNodeSpacing}");
+            sb.AppendLine($"  GroundLayer: {config.GroundLayer.value} ({LayerMaskToNames(config.GroundLayer)})");
+            sb.AppendLine($"  OneWayPlatformLayer: {config.OneWayPlatformLayer.value} ({LayerMaskToNames(config.OneWayPlatformLayer)})");
+            sb.AppendLine($"  ObstacleLayer: {config.ObstacleLayer.value} ({LayerMaskToNames(config.ObstacleLayer)})");
+            sb.AppendLine();
+
+            // 2. 扫描到的碰撞体
+            sb.AppendLine("[扫描到的平台碰撞体]");
+            var colliders = ScanPlatformColliders();
+            sb.AppendLine($"  共扫描到 {colliders.Count} 个碰撞体:");
+            foreach (var col in colliders)
+            {
+                string colType = col.GetType().Name;
+                string layer = LayerMask.LayerToName(col.gameObject.layer);
+                var bounds = col.bounds;
+                sb.AppendLine($"    - {col.gameObject.name} ({colType}) Layer={layer}");
+                sb.AppendLine($"      Bounds: center={bounds.center}, size={bounds.size}");
+                sb.AppendLine($"      Y范围: {bounds.min.y:F2} ~ {bounds.max.y:F2}");
+            }
+            sb.AppendLine();
+
+            // 3. 节点统计
+            sb.AppendLine("[节点统计]");
+            sb.AppendLine($"  总节点数: {Nodes.Count}");
+
+            // 按高度分组
+            var nodesByHeight = new Dictionary<int, List<PlatformNodeData>>();
+            foreach (var node in Nodes)
+            {
+                int y = Mathf.RoundToInt(node.Position.y);
+                if (!nodesByHeight.ContainsKey(y))
+                    nodesByHeight[y] = new List<PlatformNodeData>();
+                nodesByHeight[y].Add(node);
+            }
+
+            var sortedHeights = new List<int>(nodesByHeight.Keys);
+            sortedHeights.Sort();
+            sb.AppendLine("  按高度分布:");
+            foreach (var y in sortedHeights)
+            {
+                var nodesAtY = nodesByHeight[y];
+                float minX = float.MaxValue, maxX = float.MinValue;
+                foreach (var n in nodesAtY)
+                {
+                    if (n.Position.x < minX) minX = n.Position.x;
+                    if (n.Position.x > maxX) maxX = n.Position.x;
+                }
+                sb.AppendLine($"    Y={y}: {nodesAtY.Count}个节点, X范围=[{minX:F1}, {maxX:F1}]");
+            }
+            sb.AppendLine();
+
+            // 4. 链接统计
+            sb.AppendLine("[链接统计]");
+            int walkCount = 0, jumpCount = 0, fallCount = 0, dropCount = 0;
+            foreach (var link in Links)
+            {
+                switch (link.LinkType)
+                {
+                    case PlatformLinkType.Walk: walkCount++; break;
+                    case PlatformLinkType.Jump: jumpCount++; break;
+                    case PlatformLinkType.Fall: fallCount++; break;
+                    case PlatformLinkType.DropThrough: dropCount++; break;
+                }
+            }
+            sb.AppendLine($"  Walk: {walkCount}, Jump: {jumpCount}, Fall: {fallCount}, DropThrough: {dropCount}");
+            sb.AppendLine();
+
+            // 5. 空间索引
+            if (SpatialGrid != null)
+            {
+                sb.AppendLine("[空间索引]");
+                sb.AppendLine($"  {SpatialGrid.GetDebugInfo()}");
+            }
+
+            sb.AppendLine("========== 报告结束 ==========");
+            Debug.Log(sb.ToString());
+        }
+
+        /// <summary>
+        /// 查询指定位置附近的节点详情
+        /// </summary>
+        public string QueryNodesNearPosition(Vector2 position, float radius = 5f)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"[查询位置 {position} 半径 {radius} 内的节点]");
+
+            var nearestNode = FindNearestNode(position, radius);
+            if (nearestNode.HasValue)
+            {
+                var n = nearestNode.Value;
+                sb.AppendLine($"  最近节点: ID={n.NodeId}, Pos={n.Position}, Type={n.NodeType}, OneWay={n.IsOneWay}");
+                sb.AppendLine($"  距离: {Vector2.Distance(position, n.Position):F2}");
+            }
+            else
+            {
+                sb.AppendLine($"  未找到节点！");
+
+                // 查找更大范围
+                var farNode = FindNearestNode(position, 20f);
+                if (farNode.HasValue)
+                {
+                    sb.AppendLine($"  扩大到20米范围找到: Pos={farNode.Value.Position}, 距离={Vector2.Distance(position, farNode.Value.Position):F2}");
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        private string LayerMaskToNames(LayerMask mask)
+        {
+            var names = new List<string>();
+            for (int i = 0; i < 32; i++)
+            {
+                if ((mask.value & (1 << i)) != 0)
+                {
+                    string name = LayerMask.LayerToName(i);
+                    if (!string.IsNullOrEmpty(name))
+                        names.Add(name);
+                }
+            }
+            return names.Count > 0 ? string.Join(", ", names) : "无";
+        }
 #endif
     }
 }
