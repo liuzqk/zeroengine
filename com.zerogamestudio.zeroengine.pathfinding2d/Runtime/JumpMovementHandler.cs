@@ -324,11 +324,14 @@ namespace ZeroEngine.Pathfinding2D
                         continue;
                     }
 
-                    // 额外检查：如果碰撞点在起点附近（1.5m内），且碰撞体在起点平台正上方，忽略
-                    // 这处理了突出平台底部的情况
+                    // 额外检查：如果碰撞点在起点附近（1.5m内），且是侧面擦边（非正面撞头），忽略
+                    // 这处理了突出平台底部"擦边"起跳的情况
+                    // 修复：如果碰撞点在起点正上方（水平距离很小），说明会撞头，不应忽略
                     float distFromStart = Vector2.Distance(startPos, hit.point);
-                    if (distFromStart < 1.5f && hit.point.y > startPos.y)
+                    float horizontalDistFromStart = Mathf.Abs(hit.point.x - startPos.x);
+                    if (distFromStart < 1.5f && hit.point.y > startPos.y && horizontalDistFromStart > 0.5f)
                     {
+                        // 只有侧面擦边才忽略（水平距离 > 0.5m）
                         traveledDistance += segmentDist;
                         continue;
                     }
