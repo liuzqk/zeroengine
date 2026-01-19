@@ -98,6 +98,13 @@ namespace ZeroEngine.Pathfinding2D
             int jumpFailedHeight = 0;
             int jumpFailedReachable = 0;
             int jumpFailedTrajectory = 0;
+            int jumpSkippedNotEdge = 0;
+            int jumpSkippedNotNearestEdge = 0;
+            int fallSkippedNotNearestEdge = 0;
+
+            // 预处理：为每个平台找到最近的边缘节点（用于去重）
+            // Key: (fromNodeId, toPlatformCollider) -> 最近的目标边缘节点
+            var platformEdgeCache = BuildPlatformEdgeCache(nodes);
 
             // 遍历所有节点（跳跃链接仅从边缘节点发起，下落链接根据节点类型区分处理）
             for (int i = 0; i < nodes.Count; i++)
@@ -129,7 +136,19 @@ namespace ZeroEngine.Pathfinding2D
                     if (verticalDist >= -0.5f && verticalDist <= config.MaxJumpHeight)
                     {
                         // ★ 跳跃链接只从边缘节点发起（防止平台中间多个节点生成重复跳跃链接）
-                        if (!isEdgeNode) continue;
+                        if (!isEdgeNode)
+                        {
+                            jumpSkippedNotEdge++;
+                            continue;
+                        }
+
+                        // ★ 终点去重：只连接到目标平台最近的边缘节点
+                        var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
+                        if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
+                        {
+                            jumpSkippedNotNearestEdge++;
+                            continue;
+                        }
 
                         // 跳跃链接需要最小水平距离（防止原地跳）
                         if (horizontalDist < config.MinLinkDistance) continue;
@@ -162,6 +181,14 @@ namespace ZeroEngine.Pathfinding2D
                         // 边缘节点：完整下落检测（水平 + 垂直）
                         if (isEdgeNode && horizontalDist <= config.MaxFallHorizontalDistance)
                         {
+                            // ★ 终点去重：只连接到目标平台最近的边缘节点
+                            var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
+                            if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
+                            {
+                                fallSkippedNotNearestEdge++;
+                                continue;
+                            }
+
                             if (TryCreateFallLink(fromNode, toNode, obstacleLayer))
                             {
                                 fallLinksCreated++;
@@ -189,12 +216,63 @@ namespace ZeroEngine.Pathfinding2D
             Debug.Log($"[JumpLinkCalculator] 链接生成完成: 跳跃 {jumpLinksCreated}, 下落 {fallLinksCreated}, 穿透 {dropLinksCreated}");
             Debug.Log($"[JumpLinkCalculator] 跳跃诊断: 尝试={jumpAttempts}, 成功={jumpLinksCreated}, " +
                       $"超距离={jumpFailedDistance}, 超高度={jumpFailedHeight}, 不可达={jumpFailedReachable}, 轨迹阻挡={jumpFailedTrajectory}");
+            Debug.Log($"[JumpLinkCalculator] 去重诊断: 跳过非边缘起点={jumpSkippedNotEdge}, 跳过非最近终点(跳跃)={jumpSkippedNotNearestEdge}, 跳过非最近终点(下落)={fallSkippedNotNearestEdge}");
             Debug.Log($"[JumpLinkCalculator] 配置: MaxJumpHeight={config.MaxJumpHeight}, MaxHorizontalDistance={config.MaxHorizontalDistance}, " +
                       $"MaxJumpVelocity={config.MaxJumpVelocity}, ObstacleLayer={obstacleLayer.value}");
 
             // 构建邻接表，优化 A* 寻路性能（O(n) -> O(1)）
             graphGenerator.BuildAdjacencyList();
             Debug.Log($"[JumpLinkCalculator] 邻接表构建完成，共 {graphGenerator.AdjacencyList.Count} 个节点");
+        }
+
+        /// <summary>
+        /// 构建平台边缘节点缓存（按平台分组）
+        /// </summary>
+        private Dictionary<Collider2D, List<PlatformNodeData>> BuildPlatformEdgeCache(List<PlatformNodeData> nodes)
+        {
+            var cache = new Dictionary<Collider2D, List<PlatformNodeData>>();
+
+            foreach (var node in nodes)
+            {
+                if (node.NodeType != PlatformNodeType.LeftEdge && node.NodeType != PlatformNodeType.RightEdge)
+                    continue;
+
+                if (!cache.ContainsKey(node.PlatformCollider))
+                {
+                    cache[node.PlatformCollider] = new List<PlatformNodeData>();
+                }
+                cache[node.PlatformCollider].Add(node);
+            }
+
+            return cache;
+        }
+
+        /// <summary>
+        /// 查找目标平台上距离起点最近的边缘节点
+        /// </summary>
+        private PlatformNodeData? FindNearestEdgeOnPlatform(
+            PlatformNodeData fromNode,
+            Collider2D targetPlatform,
+            List<PlatformNodeData> allNodes,
+            Dictionary<Collider2D, List<PlatformNodeData>> edgeCache)
+        {
+            if (!edgeCache.TryGetValue(targetPlatform, out var edges) || edges.Count == 0)
+                return null;
+
+            PlatformNodeData? nearest = null;
+            float minDist = float.MaxValue;
+
+            foreach (var edge in edges)
+            {
+                float dist = Vector2.Distance(fromNode.Position, edge.Position);
+                if (dist < minDist)
+                {
+                    minDist = dist;
+                    nearest = edge;
+                }
+            }
+
+            return nearest;
         }
 
         /// <summary>
