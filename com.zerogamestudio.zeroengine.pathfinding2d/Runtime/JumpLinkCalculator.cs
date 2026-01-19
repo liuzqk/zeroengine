@@ -123,11 +123,12 @@ namespace ZeroEngine.Pathfinding2D
                     float horizontalDist = Mathf.Abs(toNode.Position.x - fromNode.Position.x);
                     float verticalDist = toNode.Position.y - fromNode.Position.y;
 
-                    if (horizontalDist < config.MinLinkDistance) continue;
-
                     // 目标在上方或同高度 - 尝试跳跃
                     if (verticalDist >= -0.5f && verticalDist <= config.MaxJumpHeight)
                     {
+                        // 跳跃链接需要最小水平距离（防止原地跳）
+                        if (horizontalDist < config.MinLinkDistance) continue;
+
                         if (horizontalDist <= config.MaxHorizontalDistance)
                         {
                             jumpAttempts++;
@@ -150,7 +151,7 @@ namespace ZeroEngine.Pathfinding2D
                     {
                         jumpFailedHeight++;
                     }
-                    // 目标在下方 - 尝试下落
+                    // 目标在下方 - 尝试下落（不需要 MinLinkDistance 检查，垂直下落也有效）
                     else if (verticalDist < -0.5f && Mathf.Abs(verticalDist) <= config.MaxFallHeight)
                     {
                         // 边缘节点：完整下落检测（水平 + 垂直）
@@ -197,6 +198,11 @@ namespace ZeroEngine.Pathfinding2D
         private bool TryCreateJumpLink(PlatformNodeData from, PlatformNodeData to, LayerMask obstacleLayer, out string failReason)
         {
             failReason = null;
+
+            // 注意：不在链接生成阶段阻止跳跃链接
+            // 即使起点头顶有突出平台遮挡，也应该生成链接
+            // 让 A* 寻路系统自然选择"先走到边缘再跳跃"的路径
+            // 运行时执行阶段由 SummonComponent.Movement.ShouldJump() 检测撞头
 
             var result = JumpMovementHandler.CalculateJump(
                 from.Position,
