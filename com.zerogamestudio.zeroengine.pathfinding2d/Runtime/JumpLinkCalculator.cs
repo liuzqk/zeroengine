@@ -142,6 +142,15 @@ namespace ZeroEngine.Pathfinding2D
                             continue;
                         }
 
+                        // ★ 终点也必须是边缘节点
+                        bool toIsEdge = toNode.NodeType == PlatformNodeType.LeftEdge ||
+                                        toNode.NodeType == PlatformNodeType.RightEdge;
+                        if (!toIsEdge)
+                        {
+                            jumpSkippedNotNearestEdge++;
+                            continue;
+                        }
+
                         // ★ 终点去重：只连接到目标平台最近的边缘节点
                         var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
                         if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
@@ -181,6 +190,15 @@ namespace ZeroEngine.Pathfinding2D
                         // 边缘节点：完整下落检测（水平 + 垂直）
                         if (isEdgeNode && horizontalDist <= config.MaxFallHorizontalDistance)
                         {
+                            // ★ 终点也必须是边缘节点
+                            bool toIsEdge = toNode.NodeType == PlatformNodeType.LeftEdge ||
+                                            toNode.NodeType == PlatformNodeType.RightEdge;
+                            if (!toIsEdge)
+                            {
+                                fallSkippedNotNearestEdge++;
+                                continue;
+                            }
+
                             // ★ 终点去重：只连接到目标平台最近的边缘节点
                             var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
                             if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
