@@ -20,8 +20,8 @@ namespace ZeroEngine.Pathfinding2D
         [Tooltip("路径过期时间（秒）")]
         public float PathExpireTime = 2f;
 
-        [Tooltip("到达目标的判定距离")]
-        public float ArriveDistance = 0.5f;
+        [Tooltip("到达目标的判定距离（高速移动时需要更大值避免过冲）")]
+        public float ArriveDistance = 1.0f;
 
         [Header("节点查找")]
         [Tooltip("查找起点/终点节点的最大距离")]
