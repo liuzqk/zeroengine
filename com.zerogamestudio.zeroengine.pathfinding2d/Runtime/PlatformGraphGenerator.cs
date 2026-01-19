@@ -175,9 +175,13 @@ namespace ZeroEngine.Pathfinding2D
                 // 过滤无效碰撞体
                 if (col == null || !col.enabled) continue;
 
-                // 只处理 BoxCollider2D, EdgeCollider2D, CompositeCollider2D
-                if (col is BoxCollider2D || col is EdgeCollider2D ||
-                    col is CompositeCollider2D || col is PolygonCollider2D)
+                // 支持的碰撞体类型：
+                // - CompositeCollider2D: Tilemap 使用 "Used by Composite" 时生成
+                // - TilemapCollider2D: Tilemap 直接碰撞体
+                // - BoxCollider2D, EdgeCollider2D, PolygonCollider2D: 普通平台
+                if (col is CompositeCollider2D ||
+                    col is UnityEngine.Tilemaps.TilemapCollider2D ||
+                    col is BoxCollider2D || col is EdgeCollider2D || col is PolygonCollider2D)
                 {
                     result.Add(col);
                 }
@@ -199,6 +203,11 @@ namespace ZeroEngine.Pathfinding2D
             {
                 GenerateNodesForCompositeCollider(composite, isOneWay);
             }
+            else if (collider is UnityEngine.Tilemaps.TilemapCollider2D tilemapCollider)
+            {
+                // TilemapCollider2D: 使用射线扫描方式生成节点
+                GenerateNodesForTilemapCollider(tilemapCollider, isOneWay);
+            }
             else if (collider is PolygonCollider2D polygon)
             {
                 GenerateNodesForPolygonCollider(polygon, isOneWay);
@@ -207,6 +216,78 @@ namespace ZeroEngine.Pathfinding2D
             {
                 // BoxCollider2D, EdgeCollider2D 等使用简单的 bounds 处理
                 GenerateNodesForSimplePlatform(collider, collider.bounds, isOneWay);
+            }
+        }
+
+        /// <summary>
+        /// 为 TilemapCollider2D 生成节点（使用射线扫描）
+        /// Tilemap 的形状复杂，使用从上向下的射线扫描来检测可站立表面
+        /// </summary>
+        private void GenerateNodesForTilemapCollider(UnityEngine.Tilemaps.TilemapCollider2D tilemapCollider, bool isOneWay)
+        {
+            var bounds = tilemapCollider.bounds;
+            float nodeSpacing = config.ActualNodeSpacing;
+
+            // 从左到右扫描
+            float startX = bounds.min.x + config.EdgeInset;
+            float endX = bounds.max.x - config.EdgeInset;
+            float scanY = bounds.max.y + 1f; // 从顶部上方开始向下扫描
+
+            // 记录上一个检测到的表面 Y 坐标，用于检测边缘
+            float? lastSurfaceY = null;
+            float lastX = startX;
+
+            for (float x = startX; x <= endX; x += nodeSpacing)
+            {
+                // 从上向下发射射线检测表面
+                Vector2 rayOrigin = new Vector2(x, scanY);
+                RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.down, bounds.size.y + 2f, config.AllPlatformLayers);
+
+                if (hit.collider == tilemapCollider)
+                {
+                    float surfaceY = hit.point.y;
+
+                    // 检测是否是新平台段的开始（左边缘）
+                    if (!lastSurfaceY.HasValue || Mathf.Abs(surfaceY - lastSurfaceY.Value) > 0.5f)
+                    {
+                        // 如果之前有平台且现在高度变化大，说明上一段结束了（右边缘）
+                        if (lastSurfaceY.HasValue && Mathf.Abs(surfaceY - lastSurfaceY.Value) > 0.5f)
+                        {
+                            Vector3 rightEdgePos = new Vector3(lastX, lastSurfaceY.Value, 0f);
+                            AddNode(PlatformNodeData.CreateEdge(nextNodeId++, rightEdgePos, tilemapCollider, false, isOneWay));
+                        }
+
+                        // 新平台段的左边缘
+                        Vector3 leftEdgePos = new Vector3(x, surfaceY, 0f);
+                        AddNode(PlatformNodeData.CreateEdge(nextNodeId++, leftEdgePos, tilemapCollider, true, isOneWay));
+                    }
+                    else
+                    {
+                        // 同一平台段的中间表面节点
+                        Vector3 surfacePos = new Vector3(x, surfaceY, 0f);
+                        AddNode(PlatformNodeData.CreateSurface(nextNodeId++, surfacePos, tilemapCollider, isOneWay));
+                    }
+
+                    lastSurfaceY = surfaceY;
+                    lastX = x;
+                }
+                else
+                {
+                    // 没有检测到表面，如果之前有平台，这是右边缘
+                    if (lastSurfaceY.HasValue)
+                    {
+                        Vector3 rightEdgePos = new Vector3(lastX, lastSurfaceY.Value, 0f);
+                        AddNode(PlatformNodeData.CreateEdge(nextNodeId++, rightEdgePos, tilemapCollider, false, isOneWay));
+                        lastSurfaceY = null;
+                    }
+                }
+            }
+
+            // 处理最后一个平台段的右边缘
+            if (lastSurfaceY.HasValue)
+            {
+                Vector3 rightEdgePos = new Vector3(lastX, lastSurfaceY.Value, 0f);
+                AddNode(PlatformNodeData.CreateEdge(nextNodeId++, rightEdgePos, tilemapCollider, false, isOneWay));
             }
         }
 
