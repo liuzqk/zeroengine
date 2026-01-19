@@ -99,12 +99,22 @@ namespace ZeroEngine.Pathfinding2D
             int jumpFailedReachable = 0;
             int jumpFailedTrajectory = 0;
             int jumpSkippedNotEdge = 0;
-            int jumpSkippedNotNearestEdge = 0;
-            int fallSkippedNotNearestEdge = 0;
+            int jumpSkippedToNotEdge = 0;
+            int jumpSkippedNotNearest = 0;
+            int fallSkippedToNotEdge = 0;
+            int fallSkippedNotNearest = 0;
+            int edgeNodeCount = 0;
 
             // 预处理：为每个平台找到最近的边缘节点（用于去重）
-            // Key: (fromNodeId, toPlatformCollider) -> 最近的目标边缘节点
             var platformEdgeCache = BuildPlatformEdgeCache(nodes);
+
+            // 统计边缘节点数量
+            foreach (var node in nodes)
+            {
+                if (node.NodeType == PlatformNodeType.LeftEdge || node.NodeType == PlatformNodeType.RightEdge)
+                    edgeNodeCount++;
+            }
+            Debug.Log($"[JumpLinkCalculator] 节点统计: 总数={nodes.Count}, 边缘节点={edgeNodeCount}, 平台数={platformEdgeCache.Count}");
 
             // 遍历所有节点（跳跃链接仅从边缘节点发起，下落链接根据节点类型区分处理）
             for (int i = 0; i < nodes.Count; i++)
@@ -147,7 +157,7 @@ namespace ZeroEngine.Pathfinding2D
                                         toNode.NodeType == PlatformNodeType.RightEdge;
                         if (!toIsEdge)
                         {
-                            jumpSkippedNotNearestEdge++;
+                            jumpSkippedToNotEdge++;
                             continue;
                         }
 
@@ -155,7 +165,7 @@ namespace ZeroEngine.Pathfinding2D
                         var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
                         if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
                         {
-                            jumpSkippedNotNearestEdge++;
+                            jumpSkippedNotNearest++;
                             continue;
                         }
 
@@ -195,7 +205,7 @@ namespace ZeroEngine.Pathfinding2D
                                             toNode.NodeType == PlatformNodeType.RightEdge;
                             if (!toIsEdge)
                             {
-                                fallSkippedNotNearestEdge++;
+                                fallSkippedToNotEdge++;
                                 continue;
                             }
 
@@ -203,7 +213,7 @@ namespace ZeroEngine.Pathfinding2D
                             var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
                             if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
                             {
-                                fallSkippedNotNearestEdge++;
+                                fallSkippedNotNearest++;
                                 continue;
                             }
 
@@ -234,7 +244,7 @@ namespace ZeroEngine.Pathfinding2D
             Debug.Log($"[JumpLinkCalculator] 链接生成完成: 跳跃 {jumpLinksCreated}, 下落 {fallLinksCreated}, 穿透 {dropLinksCreated}");
             Debug.Log($"[JumpLinkCalculator] 跳跃诊断: 尝试={jumpAttempts}, 成功={jumpLinksCreated}, " +
                       $"超距离={jumpFailedDistance}, 超高度={jumpFailedHeight}, 不可达={jumpFailedReachable}, 轨迹阻挡={jumpFailedTrajectory}");
-            Debug.Log($"[JumpLinkCalculator] 去重诊断: 跳过非边缘起点={jumpSkippedNotEdge}, 跳过非最近终点(跳跃)={jumpSkippedNotNearestEdge}, 跳过非最近终点(下落)={fallSkippedNotNearestEdge}");
+            Debug.Log($"[JumpLinkCalculator] 去重诊断: 起点非边缘={jumpSkippedNotEdge}, 终点非边缘(跳)={jumpSkippedToNotEdge}, 非最近(跳)={jumpSkippedNotNearest}, 终点非边缘(落)={fallSkippedToNotEdge}, 非最近(落)={fallSkippedNotNearest}");
             Debug.Log($"[JumpLinkCalculator] 配置: MaxJumpHeight={config.MaxJumpHeight}, MaxHorizontalDistance={config.MaxHorizontalDistance}, " +
                       $"MaxJumpVelocity={config.MaxJumpVelocity}, ObstacleLayer={obstacleLayer.value}");
 
