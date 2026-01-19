@@ -116,8 +116,10 @@ namespace ZeroEngine.Pathfinding2D
 
                     var toNode = nodes[j];
 
-                    // 跳过同一平台的节点
-                    if (fromNode.PlatformCollider == toNode.PlatformCollider) continue;
+                    // 跳过同一平台的节点（改用 Y 坐标差异判断，支持 Tilemap Composite Collider）
+                    // 原逻辑用 PlatformCollider 判断，但 Tilemap 所有平台共享一个 Collider，导致跳跃链接无法生成
+                    float heightDiff = Mathf.Abs(toNode.Position.y - fromNode.Position.y);
+                    if (heightDiff < 0.5f && fromNode.PlatformCollider == toNode.PlatformCollider) continue;
 
                     // 检查距离限制
                     float horizontalDist = Mathf.Abs(toNode.Position.x - fromNode.Position.x);
