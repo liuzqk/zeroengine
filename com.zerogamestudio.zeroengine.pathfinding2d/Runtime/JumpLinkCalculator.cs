@@ -99,7 +99,7 @@ namespace ZeroEngine.Pathfinding2D
             int jumpFailedReachable = 0;
             int jumpFailedTrajectory = 0;
 
-            // 遍历所有节点（不仅限于边缘节点，让任意位置都能发起跳跃）
+            // 遍历所有节点（跳跃链接仅从边缘节点发起，下落链接根据节点类型区分处理）
             for (int i = 0; i < nodes.Count; i++)
             {
                 var fromNode = nodes[i];
@@ -128,6 +128,9 @@ namespace ZeroEngine.Pathfinding2D
                     // 目标在上方或同高度 - 尝试跳跃
                     if (verticalDist >= -0.5f && verticalDist <= config.MaxJumpHeight)
                     {
+                        // ★ 跳跃链接只从边缘节点发起（防止平台中间多个节点生成重复跳跃链接）
+                        if (!isEdgeNode) continue;
+
                         // 跳跃链接需要最小水平距离（防止原地跳）
                         if (horizontalDist < config.MinLinkDistance) continue;
 
