@@ -45,6 +45,13 @@ namespace ZeroEngine.Pathfinding2D
 
         [Tooltip("最小链接距离 (小于此距离不创建链接)")]
         public float MinLinkDistance = 0.5f;
+
+        [Header("突出平台处理")]
+        [Tooltip("启用突出平台绕道跳跃（从边缘节点绕开遮挡）")]
+        public bool EnableOverhangBypass = true;
+
+        [Tooltip("检测突出平台的向上射线距离")]
+        public float OverhangDetectionHeight = 3f;
     }
 
     /// <summary>
@@ -178,6 +185,10 @@ namespace ZeroEngine.Pathfinding2D
                       $"超距离={jumpFailedDistance}, 超高度={jumpFailedHeight}, 不可达={jumpFailedReachable}, 轨迹阻挡={jumpFailedTrajectory}");
             Debug.Log($"[JumpLinkCalculator] 配置: MaxJumpHeight={config.MaxJumpHeight}, MaxHorizontalDistance={config.MaxHorizontalDistance}, " +
                       $"MaxJumpVelocity={config.MaxJumpVelocity}, ObstacleLayer={obstacleLayer.value}");
+
+            // 构建邻接表，优化 A* 寻路性能（O(n) -> O(1)）
+            graphGenerator.BuildAdjacencyList();
+            Debug.Log($"[JumpLinkCalculator] 邻接表构建完成，共 {graphGenerator.AdjacencyList.Count} 个节点");
         }
 
         /// <summary>
@@ -225,6 +236,54 @@ namespace ZeroEngine.Pathfinding2D
 
             graphGenerator.Links.Add(link);
             return true;
+        }
+
+        /// <summary>
+        /// 检测节点头顶是否有突出平台遮挡
+        /// </summary>
+        /// <param name="position">检测位置</param>
+        /// <param name="platformLayers">平台层</param>
+        /// <returns>遮挡的碰撞体，无遮挡返回 null</returns>
+        private Collider2D DetectOverhangAbove(Vector2 position, LayerMask platformLayers)
+        {
+            RaycastHit2D hit = Physics2D.Raycast(
+                position + Vector2.up * 0.5f,
+                Vector2.up,
+                config.OverhangDetectionHeight,
+                platformLayers
+            );
+            return hit.collider;
+        }
+
+        /// <summary>
+        /// 为被突出平台遮挡的节点查找可用的边缘跳跃点
+        /// 返回该平台上最近的、头顶无遮挡的边缘节点
+        /// </summary>
+        private PlatformNodeData? FindClearEdgeNode(PlatformNodeData blockedNode, List<PlatformNodeData> allNodes, LayerMask platformLayers)
+        {
+            PlatformNodeData? bestEdge = null;
+            float bestDist = float.MaxValue;
+
+            foreach (var node in allNodes)
+            {
+                // 必须是同一平台的边缘节点
+                if (node.PlatformCollider != blockedNode.PlatformCollider) continue;
+                if (node.NodeType != PlatformNodeType.LeftEdge && node.NodeType != PlatformNodeType.RightEdge) continue;
+
+                // 检查该边缘节点头顶是否无遮挡
+                var overhang = DetectOverhangAbove(node.Position, platformLayers);
+                if (overhang != null) continue;
+
+                // 选择最近的边缘节点
+                float dist = Vector2.Distance(blockedNode.Position, node.Position);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    bestEdge = node;
+                }
+            }
+
+            return bestEdge;
         }
 
         /// <summary>

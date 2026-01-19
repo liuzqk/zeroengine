@@ -93,6 +93,9 @@ namespace ZeroEngine.Pathfinding2D
         /// <summary>生成的链接列表</summary>
         public List<PlatformLinkData> Links { get; private set; } = new List<PlatformLinkData>();
 
+        /// <summary>邻接表：节点ID -> 出边链接列表（性能优化）</summary>
+        public Dictionary<int, List<PlatformLinkData>> AdjacencyList { get; private set; } = new Dictionary<int, List<PlatformLinkData>>();
+
         /// <summary>是否已生成</summary>
         public bool IsGenerated { get; private set; }
 
@@ -145,6 +148,7 @@ namespace ZeroEngine.Pathfinding2D
             Nodes.Clear();
             NodeIdToIndex.Clear();
             Links.Clear();
+            AdjacencyList.Clear();
             nextNodeId = 0;
             IsGenerated = false;
             SpatialGrid?.Clear();
@@ -676,12 +680,18 @@ namespace ZeroEngine.Pathfinding2D
         }
 
         /// <summary>
-        /// 获取节点的所有出边链接
+        /// 获取节点的所有出边链接（使用邻接表优化，O(1) 查询）
         /// </summary>
         public List<PlatformLinkData> GetOutgoingLinks(int nodeId)
         {
-            var result = new List<PlatformLinkData>();
+            // 优先使用邻接表（O(1) 查询）
+            if (AdjacencyList.TryGetValue(nodeId, out var links))
+            {
+                return links;
+            }
 
+            // 回退到线性搜索（兼容旧代码路径）
+            var result = new List<PlatformLinkData>();
             foreach (var link in Links)
             {
                 if (link.FromNodeId == nodeId)
@@ -689,8 +699,50 @@ namespace ZeroEngine.Pathfinding2D
                     result.Add(link);
                 }
             }
-
             return result;
+        }
+
+        /// <summary>
+        /// 构建邻接表（在所有链接生成后调用）
+        /// 将 O(n) 的链接查询优化为 O(1)
+        /// </summary>
+        public void BuildAdjacencyList()
+        {
+            AdjacencyList.Clear();
+
+            // 预分配每个节点的链接列表
+            foreach (var node in Nodes)
+            {
+                AdjacencyList[node.NodeId] = new List<PlatformLinkData>();
+            }
+
+            // 填充邻接表
+            foreach (var link in Links)
+            {
+                if (AdjacencyList.TryGetValue(link.FromNodeId, out var list))
+                {
+                    list.Add(link);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 添加链接并更新邻接表
+        /// </summary>
+        public void AddLink(PlatformLinkData link)
+        {
+            Links.Add(link);
+
+            // 如果邻接表已构建，同步更新
+            if (AdjacencyList.Count > 0)
+            {
+                if (!AdjacencyList.TryGetValue(link.FromNodeId, out var list))
+                {
+                    list = new List<PlatformLinkData>();
+                    AdjacencyList[link.FromNodeId] = list;
+                }
+                list.Add(link);
+            }
         }
 
         /// <summary>

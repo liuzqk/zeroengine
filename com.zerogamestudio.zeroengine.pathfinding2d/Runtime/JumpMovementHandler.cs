@@ -275,39 +275,68 @@ namespace ZeroEngine.Pathfinding2D
 
         /// <summary>
         /// 验证跳跃轨迹是否有障碍物阻挡（排除起点和终点平台）
+        /// 改进版：忽略起跳初期的短距离遮挡（解决突出平台问题）
         /// </summary>
         /// <param name="trajectory">轨迹点数组</param>
         /// <param name="obstacleMask">障碍物层</param>
         /// <param name="colliderRadius">碰撞体半径</param>
         /// <param name="fromPlatform">起点平台碰撞体（排除）</param>
         /// <param name="toPlatform">终点平台碰撞体（排除）</param>
+        /// <param name="ignoreInitialDistance">忽略起跳初期的检测距离（默认0.8m）</param>
         /// <returns>是否通畅</returns>
         public static bool ValidateTrajectory(
             Vector2[] trajectory,
             LayerMask obstacleMask,
             float colliderRadius,
             Collider2D fromPlatform,
-            Collider2D toPlatform)
+            Collider2D toPlatform,
+            float ignoreInitialDistance = 0.8f)
         {
             if (trajectory == null || trajectory.Length < 2)
                 return false;
+
+            Vector2 startPos = trajectory[0];
+            float traveledDistance = 0f;
 
             for (int i = 0; i < trajectory.Length - 1; i++)
             {
                 Vector2 from = trajectory[i];
                 Vector2 to = trajectory[i + 1];
-                float dist = Vector2.Distance(from, to);
+                float segmentDist = Vector2.Distance(from, to);
+
+                // 忽略起跳初期的检测（解决突出平台下方起跳被阻挡的问题）
+                // 在起跳的前 ignoreInitialDistance 米内，不进行碰撞检测
+                if (traveledDistance < ignoreInitialDistance)
+                {
+                    traveledDistance += segmentDist;
+                    continue;
+                }
 
                 RaycastHit2D hit = Physics2D.CircleCast(
-                    from, colliderRadius, (to - from).normalized, dist, obstacleMask);
+                    from, colliderRadius, (to - from).normalized, segmentDist, obstacleMask);
 
                 if (hit.collider != null)
                 {
                     // 排除起点和目标平台，避免误判
                     if (hit.collider == fromPlatform || hit.collider == toPlatform)
+                    {
+                        traveledDistance += segmentDist;
                         continue;
+                    }
+
+                    // 额外检查：如果碰撞点在起点附近（1.5m内），且碰撞体在起点平台正上方，忽略
+                    // 这处理了突出平台底部的情况
+                    float distFromStart = Vector2.Distance(startPos, hit.point);
+                    if (distFromStart < 1.5f && hit.point.y > startPos.y)
+                    {
+                        traveledDistance += segmentDist;
+                        continue;
+                    }
+
                     return false;
                 }
+
+                traveledDistance += segmentDist;
             }
             return true;
         }
