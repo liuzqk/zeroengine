@@ -6,16 +6,20 @@ using System.Collections;
 
 namespace ZeroEngine.Editor
 {
+    /// <summary>
+    /// YooAsset 一键配置工具
+    /// 使用反射调用 YooAsset API，无硬依赖
+    /// </summary>
     public static class YooAssetSetup
     {
         /// <summary>
-        /// One-click YooAsset configuration using reflection to call YooAsset's public API
+        /// 一键配置 YooAsset 规则
         /// </summary>
         public static void SetupDefaultRules()
         {
             Debug.Log("[ZeroEngine] Configuring YooAsset Rules via API...");
 
-            // Ensure Assets/Data folder exists
+            // 确保 Assets/Data 文件夹存在
             if (!AssetDatabase.IsValidFolder("Assets/Data"))
             {
                 AssetDatabase.CreateFolder("Assets", "Data");
@@ -24,7 +28,7 @@ namespace ZeroEngine.Editor
 
             try
             {
-                // Get AssetBundleCollectorSettingData type
+                // 获取 AssetBundleCollectorSettingData 类型
                 var settingDataType = GetType("YooAsset.Editor.AssetBundleCollectorSettingData");
                 if (settingDataType == null)
                 {
@@ -32,7 +36,7 @@ namespace ZeroEngine.Editor
                     return;
                 }
 
-                // Get Setting property
+                // 获取 Setting 属性
                 var settingProp = settingDataType.GetProperty("Setting", BindingFlags.Public | BindingFlags.Static);
                 var setting = settingProp?.GetValue(null);
                 if (setting == null)
@@ -42,7 +46,7 @@ namespace ZeroEngine.Editor
                     return;
                 }
 
-                // Get Packages list
+                // 获取 Packages 列表
                 var packagesField = setting.GetType().GetField("Packages", BindingFlags.Public | BindingFlags.Instance);
                 var packages = packagesField?.GetValue(setting) as IList;
 
@@ -52,7 +56,7 @@ namespace ZeroEngine.Editor
                     return;
                 }
 
-                // Check if DefaultPackage exists
+                // 检查 DefaultPackage 是否存在
                 object defaultPackage = null;
                 foreach (var pkg in packages)
                 {
@@ -64,7 +68,7 @@ namespace ZeroEngine.Editor
                     }
                 }
 
-                // Create DefaultPackage if not exists
+                // 如果不存在则创建 DefaultPackage
                 if (defaultPackage == null)
                 {
                     var packageType = GetType("YooAsset.Editor.AssetBundleCollectorPackage");
@@ -77,11 +81,11 @@ namespace ZeroEngine.Editor
                     Debug.Log("[ZeroEngine] Created 'DefaultPackage'");
                 }
 
-                // Get Groups list from package
+                // 获取 Groups 列表
                 var groupsField = defaultPackage.GetType().GetField("Groups", BindingFlags.Public | BindingFlags.Instance);
                 var groups = groupsField?.GetValue(defaultPackage) as IList;
 
-                // Check if GameData group exists
+                // 检查 GameData 组是否存在
                 object dataGroup = null;
                 if (groups != null)
                 {
@@ -96,7 +100,7 @@ namespace ZeroEngine.Editor
                     }
                 }
 
-                // Create GameData group if not exists
+                // 如果不存在则创建 GameData 组
                 if (dataGroup == null && groups != null)
                 {
                     var groupType = GetType("YooAsset.Editor.AssetBundleCollectorGroup");
@@ -106,16 +110,16 @@ namespace ZeroEngine.Editor
                     var activeField = groupType.GetField("ActiveRuleName", BindingFlags.Public | BindingFlags.Instance);
                     nameField?.SetValue(dataGroup, "GameData");
                     descField?.SetValue(dataGroup, "Core Game Data");
-                    activeField?.SetValue(dataGroup, "EnableGroup"); // Critical: Set ActiveRule!
+                    activeField?.SetValue(dataGroup, "EnableGroup");
                     groups.Add(dataGroup);
                     Debug.Log("[ZeroEngine] Created 'GameData' Group");
                 }
 
-                // Get Collectors list from group
+                // 获取 Collectors 列表
                 var collectorsField = dataGroup?.GetType().GetField("Collectors", BindingFlags.Public | BindingFlags.Instance);
                 var collectors = collectorsField?.GetValue(dataGroup) as IList;
 
-                // Check if Assets/Data collector exists
+                // 检查 Assets/Data 收集器是否存在
                 bool hasDataCollector = false;
                 if (collectors != null)
                 {
@@ -130,27 +134,27 @@ namespace ZeroEngine.Editor
                     }
                 }
 
-                // Create Assets/Data collector if not exists
+                // 如果不存在则创建 Assets/Data 收集器
                 if (!hasDataCollector && collectors != null)
                 {
                     var collectorType = GetType("YooAsset.Editor.AssetBundleCollector");
                     var newCollector = Activator.CreateInstance(collectorType);
-                    
+
                     SetFieldValue(newCollector, "CollectPath", "Assets/Data");
                     SetFieldValue(newCollector, "CollectorGUID", AssetDatabase.AssetPathToGUID("Assets/Data"));
                     SetFieldValue(newCollector, "CollectorType", GetEnumValue("YooAsset.Editor.ECollectorType", "MainAssetCollector"));
                     SetFieldValue(newCollector, "AddressRuleName", "AddressByFileName");
                     SetFieldValue(newCollector, "PackRuleName", "PackDirectory");
                     SetFieldValue(newCollector, "FilterRuleName", "CollectAll");
-                    
+
                     collectors.Add(newCollector);
                     Debug.Log("[ZeroEngine] Added 'Assets/Data' Collector");
                 }
 
-                // Save settings
+                // 保存设置
                 var saveMethod = settingDataType.GetMethod("SaveFile", BindingFlags.Public | BindingFlags.Static);
                 saveMethod?.Invoke(null, null);
-                
+
                 Debug.Log("[ZeroEngine] ✅ YooAsset Configuration Complete!");
                 Debug.Log("[ZeroEngine] Opening window to verify...");
                 EditorApplication.ExecuteMenuItem("YooAsset/AssetBundle Collector");

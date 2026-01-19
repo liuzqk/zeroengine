@@ -5,6 +5,10 @@ using System.Linq;
 
 namespace ZeroEngine.Editor
 {
+    /// <summary>
+    /// 插件检测器 - 通过反射检测常用第三方插件状态
+    /// 无硬依赖，可在任何项目中使用
+    /// </summary>
     [InitializeOnLoad]
     public static class PluginManager
     {
@@ -20,15 +24,11 @@ namespace ZeroEngine.Editor
 
         public static void CheckPlugins()
         {
-            // Check based on known types or assemblies
+            // 通过反射检测类型，无硬依赖
             HasOdin = TypeExists("Sirenix.OdinInspector.Editor.OdinMenuEditorWindow");
             HasDOTween = TypeExists("DG.Tweening.DOTween");
             HasEasySave = TypeExists("ES3");
             HasYooAsset = TypeExists("YooAsset.YooAssets");
-
-            // Optional: Define Symbols if needed. 
-            // However, most plugins define their own (ODIN_INSPECTOR, DOTWEEN, ES3, YOOASSET).
-            // We just track status for our Dashboard UI.
         }
 
         private static bool TypeExists(string typeName)
@@ -47,12 +47,12 @@ namespace ZeroEngine.Editor
         public static void DrawPluginStatusGUI()
         {
             EditorGUILayout.LabelField("Plugin Integration Status", EditorStyles.boldLabel);
-            
+
             DrawStatus("Odin Inspector", HasOdin, "Enables Advanced Editors (Inventory, etc.)");
             DrawStatus("DOTween", HasDOTween, "Enables UI Animations");
             DrawStatus("EasySave 3", HasEasySave, "Enables Robust Save System");
             DrawStatus("YooAsset", HasYooAsset, "Enables Industrial Asset Management");
-            
+
             EditorGUILayout.Space();
         }
 
