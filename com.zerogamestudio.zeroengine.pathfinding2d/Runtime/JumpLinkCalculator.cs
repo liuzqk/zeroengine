@@ -106,7 +106,8 @@ namespace ZeroEngine.Pathfinding2D
             int edgeNodeCount = 0;
 
             // 预处理：为每个平台找到最近的边缘节点（用于去重）
-            var platformEdgeCache = BuildPlatformEdgeCache(nodes);
+            // 使用 Y 坐标分组（支持 Tilemap Composite Collider 场景，所有平台共享一个 Collider）
+            var platformEdgeCache = BuildPlatformEdgeCacheByHeight(nodes);
 
             // 统计边缘节点数量
             foreach (var node in nodes)
@@ -114,7 +115,7 @@ namespace ZeroEngine.Pathfinding2D
                 if (node.NodeType == PlatformNodeType.LeftEdge || node.NodeType == PlatformNodeType.RightEdge)
                     edgeNodeCount++;
             }
-            Debug.Log($"[JumpLinkCalculator] 节点统计: 总数={nodes.Count}, 边缘节点={edgeNodeCount}, 平台数={platformEdgeCache.Count}");
+            Debug.Log($"[JumpLinkCalculator] 节点统计: 总数={nodes.Count}, 边缘节点={edgeNodeCount}, 平台数(按高度)={platformEdgeCache.Count}");
 
             // 遍历所有节点（跳跃链接仅从边缘节点发起，下落链接根据节点类型区分处理）
             for (int i = 0; i < nodes.Count; i++)
@@ -161,8 +162,9 @@ namespace ZeroEngine.Pathfinding2D
                             continue;
                         }
 
-                        // ★ 终点去重：只连接到目标平台最近的边缘节点
-                        var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
+                        // ★ 终点去重：只连接到目标平台最近的边缘节点（按高度分组）
+                        int toHeightKey = Mathf.RoundToInt(toNode.Position.y * 2); // 0.5 精度
+                        var nearestEdge = FindNearestEdgeByHeight(fromNode, toHeightKey, platformEdgeCache);
                         if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
                         {
                             jumpSkippedNotNearest++;
@@ -209,8 +211,9 @@ namespace ZeroEngine.Pathfinding2D
                                 continue;
                             }
 
-                            // ★ 终点去重：只连接到目标平台最近的边缘节点
-                            var nearestEdge = FindNearestEdgeOnPlatform(fromNode, toNode.PlatformCollider, nodes, platformEdgeCache);
+                            // ★ 终点去重：只连接到目标平台最近的边缘节点（按高度分组）
+                            int toHeightKey = Mathf.RoundToInt(toNode.Position.y * 2); // 0.5 精度
+                            var nearestEdge = FindNearestEdgeByHeight(fromNode, toHeightKey, platformEdgeCache);
                             if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
                             {
                                 fallSkippedNotNearest++;
@@ -254,37 +257,39 @@ namespace ZeroEngine.Pathfinding2D
         }
 
         /// <summary>
-        /// 构建平台边缘节点缓存（按平台分组）
+        /// 构建平台边缘节点缓存（按高度分组，支持 Tilemap Composite Collider）
         /// </summary>
-        private Dictionary<Collider2D, List<PlatformNodeData>> BuildPlatformEdgeCache(List<PlatformNodeData> nodes)
+        private Dictionary<int, List<PlatformNodeData>> BuildPlatformEdgeCacheByHeight(List<PlatformNodeData> nodes)
         {
-            var cache = new Dictionary<Collider2D, List<PlatformNodeData>>();
+            var cache = new Dictionary<int, List<PlatformNodeData>>();
 
             foreach (var node in nodes)
             {
                 if (node.NodeType != PlatformNodeType.LeftEdge && node.NodeType != PlatformNodeType.RightEdge)
                     continue;
 
-                if (!cache.ContainsKey(node.PlatformCollider))
+                // 使用 Y 坐标作为平台分组键（0.5 精度）
+                int heightKey = Mathf.RoundToInt(node.Position.y * 2);
+
+                if (!cache.ContainsKey(heightKey))
                 {
-                    cache[node.PlatformCollider] = new List<PlatformNodeData>();
+                    cache[heightKey] = new List<PlatformNodeData>();
                 }
-                cache[node.PlatformCollider].Add(node);
+                cache[heightKey].Add(node);
             }
 
             return cache;
         }
 
         /// <summary>
-        /// 查找目标平台上距离起点最近的边缘节点
+        /// 查找指定高度平台上距离起点最近的边缘节点
         /// </summary>
-        private PlatformNodeData? FindNearestEdgeOnPlatform(
+        private PlatformNodeData? FindNearestEdgeByHeight(
             PlatformNodeData fromNode,
-            Collider2D targetPlatform,
-            List<PlatformNodeData> allNodes,
-            Dictionary<Collider2D, List<PlatformNodeData>> edgeCache)
+            int targetHeightKey,
+            Dictionary<int, List<PlatformNodeData>> edgeCache)
         {
-            if (!edgeCache.TryGetValue(targetPlatform, out var edges) || edges.Count == 0)
+            if (!edgeCache.TryGetValue(targetHeightKey, out var edges) || edges.Count == 0)
                 return null;
 
             PlatformNodeData? nearest = null;
