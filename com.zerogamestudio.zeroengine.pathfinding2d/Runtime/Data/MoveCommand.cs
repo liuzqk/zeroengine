@@ -52,9 +52,18 @@ namespace ZeroEngine.Pathfinding2D
         public Vector2[] JumpTrajectory;
 
         /// <summary>
+        /// 目标朝向：-1=左, 0=保持当前朝向, 1=右
+        /// 由寻路系统预计算，避免业务层二次判断导致震荡
+        /// </summary>
+        public int FacingDirection;
+
+        /// <summary>
         /// 创建行走指令
         /// </summary>
-        public static MoveCommand Walk(Vector3 target, float duration = 0f)
+        /// <param name="target">目标位置</param>
+        /// <param name="duration">预计时间</param>
+        /// <param name="facingDirection">目标朝向：-1=左, 0=保持, 1=右</param>
+        public static MoveCommand Walk(Vector3 target, float duration = 0f, int facingDirection = 0)
         {
             return new MoveCommand
             {
@@ -62,14 +71,21 @@ namespace ZeroEngine.Pathfinding2D
                 Target = target,
                 JumpVelocityY = 0f,
                 JumpVelocityX = 0f,
-                EstimatedDuration = duration
+                EstimatedDuration = duration,
+                FacingDirection = facingDirection
             };
         }
 
         /// <summary>
         /// 创建跳跃指令
         /// </summary>
-        public static MoveCommand Jump(Vector3 target, float velocityY, float velocityX = 0f, float duration = 0f, Vector2[] trajectory = null)
+        /// <param name="target">目标位置</param>
+        /// <param name="velocityY">Y 方向初速度</param>
+        /// <param name="velocityX">X 方向初速度</param>
+        /// <param name="duration">预计时间</param>
+        /// <param name="trajectory">跳跃轨迹点</param>
+        /// <param name="facingDirection">目标朝向：-1=左, 0=保持, 1=右</param>
+        public static MoveCommand Jump(Vector3 target, float velocityY, float velocityX = 0f, float duration = 0f, Vector2[] trajectory = null, int facingDirection = 0)
         {
             return new MoveCommand
             {
@@ -78,14 +94,18 @@ namespace ZeroEngine.Pathfinding2D
                 JumpVelocityY = velocityY,
                 JumpVelocityX = velocityX,
                 EstimatedDuration = duration,
-                JumpTrajectory = trajectory
+                JumpTrajectory = trajectory,
+                FacingDirection = facingDirection
             };
         }
 
         /// <summary>
         /// 创建自由落体指令
         /// </summary>
-        public static MoveCommand Fall(Vector3 target, float duration = 0f)
+        /// <param name="target">目标位置</param>
+        /// <param name="duration">预计时间</param>
+        /// <param name="facingDirection">目标朝向：-1=左, 0=保持, 1=右</param>
+        public static MoveCommand Fall(Vector3 target, float duration = 0f, int facingDirection = 0)
         {
             return new MoveCommand
             {
@@ -93,14 +113,19 @@ namespace ZeroEngine.Pathfinding2D
                 Target = target,
                 JumpVelocityY = 0f,
                 JumpVelocityX = 0f,
-                EstimatedDuration = duration
+                EstimatedDuration = duration,
+                FacingDirection = facingDirection
             };
         }
 
         /// <summary>
         /// 创建穿透平台下落指令
         /// </summary>
-        public static MoveCommand DropDown(Vector3 target, Collider2D platform, float duration = 0f)
+        /// <param name="target">目标位置</param>
+        /// <param name="platform">平台碰撞体</param>
+        /// <param name="duration">预计时间</param>
+        /// <param name="facingDirection">目标朝向：-1=左, 0=保持, 1=右</param>
+        public static MoveCommand DropDown(Vector3 target, Collider2D platform, float duration = 0f, int facingDirection = 0)
         {
             return new MoveCommand
             {
@@ -110,7 +135,8 @@ namespace ZeroEngine.Pathfinding2D
                 JumpVelocityX = 0f,
                 EstimatedDuration = duration,
                 PlatformCollider = platform,
-                IsOneWayPlatform = true
+                IsOneWayPlatform = true,
+                FacingDirection = facingDirection
             };
         }
 

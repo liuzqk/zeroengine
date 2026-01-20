@@ -206,9 +206,12 @@ namespace ZeroEngine.Pathfinding2D
             }
 
             // 创建直接行走指令
+            float deltaX = end.x - start.x;
+            int facing = deltaX > 0.1f ? 1 : (deltaX < -0.1f ? -1 : 0);
+
             var commands = new List<MoveCommand>
             {
-                MoveCommand.Walk(end, Vector2.Distance(start, end) / config.WalkSpeed)
+                MoveCommand.Walk(end, Vector2.Distance(start, end) / config.WalkSpeed, facing)
             };
 
             return new Platform2DPath(start, end, commands);
@@ -615,24 +618,35 @@ namespace ZeroEngine.Pathfinding2D
                     float dist = Vector2.Distance(actualStart, firstNode.Value.Position);
                     if (dist > config.ArriveDistance)
                     {
+                        // 计算朝向：根据目标 X 与起点 X 的差值
+                        float deltaX = firstNode.Value.Position.x - actualStart.x;
+                        int facing = CalculateFacingDirection(deltaX);
+
                         commands.Add(MoveCommand.Walk(
                             firstNode.Value.Position,
-                            dist / config.WalkSpeed
+                            dist / config.WalkSpeed,
+                            facing
                         ));
                     }
                 }
             }
 
             // 处理路径中的每个链接
+            Vector3 prevPosition = nodePath.Count > 0 ? graphGenerator.GetNode(nodePath[0])?.Position ?? actualStart : actualStart;
+
             foreach (var link in linkPath)
             {
                 var toNode = graphGenerator.GetNode(link.ToNodeId);
                 if (!toNode.HasValue) continue;
 
+                // 计算朝向：根据目标位置与前一个位置的 X 差值
+                float deltaX = toNode.Value.Position.x - prevPosition.x;
+                int facing = CalculateFacingDirection(deltaX);
+
                 switch (link.LinkType)
                 {
                     case PlatformLinkType.Walk:
-                        commands.Add(MoveCommand.Walk(toNode.Value.Position, link.Duration));
+                        commands.Add(MoveCommand.Walk(toNode.Value.Position, link.Duration, facing));
                         break;
 
                     case PlatformLinkType.Jump:
@@ -641,22 +655,26 @@ namespace ZeroEngine.Pathfinding2D
                             link.JumpVelocityY,
                             link.JumpVelocityX,
                             link.Duration,
-                            link.JumpTrajectory  // 传递预计算的轨迹点用于可视化
+                            link.JumpTrajectory,  // 传递预计算的轨迹点用于可视化
+                            facing
                         ));
                         break;
 
                     case PlatformLinkType.Fall:
-                        commands.Add(MoveCommand.Fall(toNode.Value.Position, link.Duration));
+                        commands.Add(MoveCommand.Fall(toNode.Value.Position, link.Duration, facing));
                         break;
 
                     case PlatformLinkType.DropThrough:
                         commands.Add(MoveCommand.DropDown(
                             toNode.Value.Position,
                             toNode.Value.PlatformCollider,
-                            link.Duration
+                            link.Duration,
+                            facing
                         ));
                         break;
                 }
+
+                prevPosition = toNode.Value.Position;
             }
 
             // 从最后一个节点走到实际终点
@@ -668,15 +686,33 @@ namespace ZeroEngine.Pathfinding2D
                     float dist = Vector2.Distance(lastNode.Value.Position, actualEnd);
                     if (dist > config.ArriveDistance)
                     {
+                        // 计算朝向
+                        float deltaX = actualEnd.x - lastNode.Value.Position.x;
+                        int facing = CalculateFacingDirection(deltaX);
+
                         commands.Add(MoveCommand.Walk(
                             actualEnd,
-                            dist / config.WalkSpeed
+                            dist / config.WalkSpeed,
+                            facing
                         ));
                     }
                 }
             }
 
             return new Platform2DPath(actualStart, actualEnd, commands);
+        }
+
+        /// <summary>
+        /// 根据 X 轴差值计算朝向
+        /// </summary>
+        /// <param name="deltaX">目标 X - 当前 X</param>
+        /// <returns>-1=左, 0=保持, 1=右</returns>
+        private int CalculateFacingDirection(float deltaX)
+        {
+            const float threshold = 0.1f;
+            if (deltaX > threshold) return 1;   // 向右
+            if (deltaX < -threshold) return -1; // 向左
+            return 0; // 保持当前朝向
         }
 
 #if UNITY_EDITOR
