@@ -100,9 +100,7 @@ namespace ZeroEngine.Pathfinding2D
             int jumpFailedTrajectory = 0;
             int jumpSkippedNotEdge = 0;
             int jumpSkippedToNotEdge = 0;
-            int jumpSkippedNotNearest = 0;
             int fallSkippedToNotEdge = 0;
-            int fallSkippedNotNearest = 0;
             int edgeNodeCount = 0;
 
             // 预处理：为每个平台找到最近的边缘节点（用于去重）
@@ -162,14 +160,9 @@ namespace ZeroEngine.Pathfinding2D
                             continue;
                         }
 
-                        // ★ 终点去重：只连接到目标平台最近的边缘节点（按高度分组）
-                        int toHeightKey = Mathf.RoundToInt(toNode.Position.y * 2); // 0.5 精度
-                        var nearestEdge = FindNearestEdgeByHeight(fromNode, toHeightKey, platformEdgeCache);
-                        if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
-                        {
-                            jumpSkippedNotNearest++;
-                            continue;
-                        }
+                        // ★ 工业级方案：尝试连接所有可达边缘节点（不只是最近的）
+                        // 让轨迹验证决定是否创建链接，而非位置去重
+                        // 这样即使最近的边缘被遮挡，也能连接到其他开阔的边缘
 
                         // 跳跃链接需要最小水平距离（防止原地跳）
                         if (horizontalDist < config.MinLinkDistance) continue;
@@ -211,14 +204,8 @@ namespace ZeroEngine.Pathfinding2D
                                 continue;
                             }
 
-                            // ★ 终点去重：只连接到目标平台最近的边缘节点（按高度分组）
-                            int toHeightKey = Mathf.RoundToInt(toNode.Position.y * 2); // 0.5 精度
-                            var nearestEdge = FindNearestEdgeByHeight(fromNode, toHeightKey, platformEdgeCache);
-                            if (nearestEdge.HasValue && toNode.NodeId != nearestEdge.Value.NodeId)
-                            {
-                                fallSkippedNotNearest++;
-                                continue;
-                            }
+                            // ★ 工业级方案：尝试连接所有可达边缘节点（不只是最近的）
+                            // 让轨迹验证决定是否创建链接，而非位置去重
 
                             if (TryCreateFallLink(fromNode, toNode, obstacleLayer))
                             {
@@ -247,7 +234,7 @@ namespace ZeroEngine.Pathfinding2D
             Debug.Log($"[JumpLinkCalculator] 链接生成完成: 跳跃 {jumpLinksCreated}, 下落 {fallLinksCreated}, 穿透 {dropLinksCreated}");
             Debug.Log($"[JumpLinkCalculator] 跳跃诊断: 尝试={jumpAttempts}, 成功={jumpLinksCreated}, " +
                       $"超距离={jumpFailedDistance}, 超高度={jumpFailedHeight}, 不可达={jumpFailedReachable}, 轨迹阻挡={jumpFailedTrajectory}");
-            Debug.Log($"[JumpLinkCalculator] 去重诊断: 起点非边缘={jumpSkippedNotEdge}, 终点非边缘(跳)={jumpSkippedToNotEdge}, 非最近(跳)={jumpSkippedNotNearest}, 终点非边缘(落)={fallSkippedToNotEdge}, 非最近(落)={fallSkippedNotNearest}");
+            Debug.Log($"[JumpLinkCalculator] 过滤诊断: 起点非边缘={jumpSkippedNotEdge}, 终点非边缘(跳)={jumpSkippedToNotEdge}, 终点非边缘(落)={fallSkippedToNotEdge}");
             Debug.Log($"[JumpLinkCalculator] 配置: MaxJumpHeight={config.MaxJumpHeight}, MaxHorizontalDistance={config.MaxHorizontalDistance}, " +
                       $"MaxJumpVelocity={config.MaxJumpVelocity}, ObstacleLayer={obstacleLayer.value}");
 
