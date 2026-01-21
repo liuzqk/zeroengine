@@ -85,7 +85,18 @@ namespace ZGS.Analytics
                         {
                             if (string.Equals(file, logPath, StringComparison.OrdinalIgnoreCase)) continue;
                             string rel = file.Substring(root.Length + 1).Replace('\\', '/');
-                            zip.CreateEntryFromFile(file, prefixDir + rel);
+                            // 使用 FileShare.ReadWrite 避免文件锁冲突
+                            try
+                            {
+                                var entry = zip.CreateEntry(prefixDir + rel);
+                                using var entryStream = entry.Open();
+                                using var fileStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                                fileStream.CopyTo(entryStream);
+                            }
+                            catch (IOException ex)
+                            {
+                                AnalyticsLog.LogWarning($"[ZipAttachmentUploader] 跳过被占用的文件: {rel} - {ex.Message}");
+                            }
                         }
                     }
                 }
