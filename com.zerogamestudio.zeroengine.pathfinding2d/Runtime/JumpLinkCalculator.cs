@@ -107,11 +107,15 @@ namespace ZeroEngine.Pathfinding2D
             // 使用 Y 坐标分组（支持 Tilemap Composite Collider 场景，所有平台共享一个 Collider）
             var platformEdgeCache = BuildPlatformEdgeCacheByHeight(nodes);
 
-            // 统计边缘节点数量
+            // 统计边缘节点数量并输出详细诊断信息
+            Debug.Log($"[JumpLink诊断] 边缘节点列表:");
             foreach (var node in nodes)
             {
                 if (node.NodeType == PlatformNodeType.LeftEdge || node.NodeType == PlatformNodeType.RightEdge)
+                {
                     edgeNodeCount++;
+                    Debug.Log($"  - {node.NodeType} at {node.Position} (NodeId={node.NodeId}, OneWay={node.IsOneWay})");
+                }
             }
             Debug.Log($"[JumpLinkCalculator] 节点统计: 总数={nodes.Count}, 边缘节点={edgeNodeCount}, 平台数(按高度)={platformEdgeCache.Count}");
 

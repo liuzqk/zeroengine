@@ -2,6 +2,13 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.6.13] - 2025-01-21
+
+### Added
+- JumpLinkCalculator 添加详细边缘节点诊断日志
+  - 输出每个边缘节点的坐标、NodeId、OneWay 属性
+  - 便于调试跳跃链接生成问题
+
 ## [1.6.12] - 2025-01-21
 
 ### Fixed
