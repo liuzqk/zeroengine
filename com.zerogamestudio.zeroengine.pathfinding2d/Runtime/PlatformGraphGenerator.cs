@@ -467,9 +467,6 @@ namespace ZeroEngine.Pathfinding2D
                 {
                     var upper = sortedByY[j];
 
-                    // 同一 Collider 的边缘已由 GenerateHeightTransitionNodes 处理
-                    if (upper.collider == lower.collider) continue;
-
                     float heightDiff = upper.y - lower.y;
                     if (heightDiff > 8f) continue;  // 高度差太大（超过最大跳跃高度）
                     if (heightDiff < 0.5f) continue; // 同一平面

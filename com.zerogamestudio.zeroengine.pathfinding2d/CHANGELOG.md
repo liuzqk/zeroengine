@@ -2,6 +2,20 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.6.15] - 2025-01-21
+
+### Fixed
+- 修复 Tilemap Composite Collider 场景下边缘节点生成不足的问题
+  - **移除同 Collider 跳过逻辑**: Tilemap 场景所有平台共享一个 Collider，v1.6.14 的 `if (upper.collider == lower.collider) continue` 导致跨高度落地点完全不生成
+  - 现在 `GenerateGlobalHeightTransitionNodes()` 正确处理所有跨高度的边缘对
+  - 预期效果：边缘节点从 11 增加到 15+
+
+- 修复 Surface 节点下落链接过多的问题
+  - **终点边缘检查**: Surface 节点下落时现在检查终点是否是边缘节点
+  - 之前：Surface 节点可以下落到任意节点，导致 152 个无意义的下落链接
+  - 现在：Surface 节点下落终点必须是边缘节点，与边缘节点下落逻辑一致
+  - 预期效果：下落链接从 152 减少到 < 30
+
 ## [1.6.14] - 2025-01-21
 
 ### Fixed

@@ -227,8 +227,17 @@ namespace ZeroEngine.Pathfinding2D
                             }
                         }
                         // 表面节点：仅限垂直下落（水平距离很小）
+                        // ★ 终点也必须是边缘节点，防止平台内部生成大量无意义的下落链接
                         else if (isSurfaceNode && horizontalDist <= config.SurfaceNodeVerticalFallMaxHorizontal)
                         {
+                            bool toIsEdge = toNode.NodeType == PlatformNodeType.LeftEdge ||
+                                            toNode.NodeType == PlatformNodeType.RightEdge;
+                            if (!toIsEdge)
+                            {
+                                fallSkippedToNotEdge++;
+                                continue;
+                            }
+
                             if (TryCreateFallLink(fromNode, toNode, obstacleLayer))
                             {
                                 fallLinksCreated++;
