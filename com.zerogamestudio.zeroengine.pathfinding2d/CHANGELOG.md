@@ -2,6 +2,15 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.6.11] - 2025-01-21
+
+### Fixed
+- `FindTopEdges()` 改用混合检测策略，修复侧面突出平台边缘无法识别的问题
+  - 问题：射线检测对于侧面突出平台会失败（射线被上方墙壁阻挡）
+  - 解决：优先使用射线检测，失败时回退到法线方向判断
+  - 新增 `IsClockwise()` 辅助方法，通过 Shoelace 公式判断多边形顶点顺序
+  - 根据顶点顺序动态调整法线方向计算，确保法线始终指向多边形外部
+
 ## [1.6.10] - 2025-01-21
 
 ### Fixed

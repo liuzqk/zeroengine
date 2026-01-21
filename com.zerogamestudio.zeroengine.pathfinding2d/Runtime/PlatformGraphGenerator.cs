@@ -436,8 +436,25 @@ namespace ZeroEngine.Pathfinding2D
         }
 
         /// <summary>
+        /// 判断多边形顶点是否为顺时针顺序
+        /// 使用 Shoelace 公式计算有符号面积
+        /// </summary>
+        private bool IsClockwise(List<Vector2> points)
+        {
+            float sum = 0f;
+            int count = points.Count;
+            for (int i = 0; i < count; i++)
+            {
+                var p1 = points[i];
+                var p2 = points[(i + 1) % count];
+                sum += (p2.x - p1.x) * (p2.y + p1.y);
+            }
+            return sum > 0; // 正值 = 顺时针
+        }
+
+        /// <summary>
         /// 从多边形路径中找出顶部边缘
-        /// 使用射线检测判断是否是可站立表面
+        /// 使用混合检测：优先射线检测，失败时使用法线方向判断
         /// </summary>
         private List<(float left, float right, float y)> FindTopEdges(List<Vector2> points)
         {
@@ -449,6 +466,8 @@ namespace ZeroEngine.Pathfinding2D
 
             if (points.Count < 3) return edges;
 
+            // 判断顶点顺序（用于法线方向计算）
+            bool isClockwise = IsClockwise(points);
             int count = points.Count;
 
             for (int i = 0; i < count; i++)
@@ -470,14 +489,25 @@ namespace ZeroEngine.Pathfinding2D
                 float midX = (p1.x + p2.x) / 2f;
                 float midY = (p1.y + p2.y) / 2f;
 
-                // 从边缘上方向下发射射线
+                // 方法1: 射线检测（优先）
                 Vector2 rayOrigin = new Vector2(midX, midY + standingHeight);
                 RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayLength, config.AllPlatformLayers);
 
-                // 判断条件：射线命中且命中点接近边缘中点，且上方有足够空间
                 bool isTopEdge = hit.collider != null &&
                                  Mathf.Abs(hit.point.y - midY) < 0.3f &&
                                  (rayOrigin.y - hit.point.y) > standingHeight * 0.5f;
+
+                // 方法2: 法线方向判断（备选，用于射线被遮挡的情况）
+                if (!isTopEdge)
+                {
+                    Vector2 edgeDir = p2 - p1;
+                    // 根据顶点顺序调整法线方向
+                    Vector2 normal = isClockwise
+                        ? new Vector2(-edgeDir.y, edgeDir.x).normalized  // 顺时针：左手法则
+                        : new Vector2(edgeDir.y, -edgeDir.x).normalized; // 逆时针：右手法则
+
+                    isTopEdge = normal.y > 0.7f;
+                }
 
                 if (isTopEdge)
                 {
