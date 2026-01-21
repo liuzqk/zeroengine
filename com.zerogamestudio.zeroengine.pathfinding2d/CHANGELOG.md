@@ -2,6 +2,18 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.6.12] - 2025-01-21
+
+### Fixed
+- 修复边缘节点生成不足导致跳跃链接过少的问题
+  - **窄平台修复**: 宽度 < MinPlatformWidth 的平台现在生成 Edge 节点而非 Surface 节点，允许作为跳跃起点/终点
+  - **跨 Collider 转换节点**: 新增 `GenerateGlobalHeightTransitionNodes()` 方法，在跨 Collider 的高度交界处生成额外边缘节点
+  - 预期效果：边缘节点从 17 个增加到 30+，跳跃链接从 1 个增加到 10+
+
+### Added
+- `_allEdgesCache`: 缓存所有边缘数据，用于全局转换节点后处理
+- `GenerateGlobalHeightTransitionNodes()`: 全局高度转换节点生成，处理跨 Collider 的边缘
+
 ## [1.6.11] - 2025-01-21
 
 ### Fixed

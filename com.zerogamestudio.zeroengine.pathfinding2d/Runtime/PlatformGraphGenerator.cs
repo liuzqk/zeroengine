@@ -107,6 +107,10 @@ namespace ZeroEngine.Pathfinding2D
 
         private int nextNodeId = 0;
 
+        // 缓存所有边缘数据，用于全局转换节点生成
+        private readonly List<(float left, float right, float y, Collider2D collider, bool isOneWay)> _allEdgesCache
+            = new List<(float, float, float, Collider2D, bool)>();
+
         // 复用 List 避免 GC
         private readonly List<Vector2> _pathPointsCache = new List<Vector2>(64);
         private readonly List<PlatformNodeData> _nodesInRangeCache = new List<PlatformNodeData>(32);
@@ -117,6 +121,7 @@ namespace ZeroEngine.Pathfinding2D
         public void GeneratePlatformGraph()
         {
             ClearGraph();
+            _allEdgesCache.Clear();  // 清空边缘缓存
 
             // 扫描区域内的所有平台碰撞体
             var colliders = ScanPlatformColliders();
@@ -126,6 +131,9 @@ namespace ZeroEngine.Pathfinding2D
             {
                 GenerateNodesForPlatform(collider);
             }
+
+            // 全局高度转换节点生成（跨 Collider）
+            GenerateGlobalHeightTransitionNodes();
 
             // 生成同平台行走链接
             GenerateWalkLinks();
@@ -436,6 +444,63 @@ namespace ZeroEngine.Pathfinding2D
         }
 
         /// <summary>
+        /// 全局高度转换节点生成（后处理）
+        /// 检测跨 Collider 的高度交界，在下层平台生成额外边缘节点
+        ///
+        /// 与 GenerateHeightTransitionNodes 的区别：
+        /// - GenerateHeightTransitionNodes: 只处理同一 Collider 同一路径内的边缘
+        /// - GenerateGlobalHeightTransitionNodes: 处理所有边缘（跨 Collider）
+        /// </summary>
+        private void GenerateGlobalHeightTransitionNodes()
+        {
+            if (_allEdgesCache.Count < 2) return;
+
+            // 按 Y 坐标升序排序
+            var sortedByY = new List<(float left, float right, float y, Collider2D collider, bool isOneWay)>(_allEdgesCache);
+            sortedByY.Sort((a, b) => a.y.CompareTo(b.y));
+
+            for (int i = 0; i < sortedByY.Count; i++)
+            {
+                var lower = sortedByY[i];
+
+                for (int j = i + 1; j < sortedByY.Count; j++)
+                {
+                    var upper = sortedByY[j];
+
+                    // 同一 Collider 的边缘已由 GenerateHeightTransitionNodes 处理
+                    if (upper.collider == lower.collider) continue;
+
+                    float heightDiff = upper.y - lower.y;
+                    if (heightDiff > 8f) continue;  // 高度差太大（超过最大跳跃高度）
+                    if (heightDiff < 0.5f) continue; // 同一平面
+
+                    // 检查上层平台的边缘是否在下层平台的 X 范围内
+                    float inset = config.EdgeInset;
+
+                    // 上层左边缘在下层范围内 → 在下层的 upper.left 位置生成节点
+                    if (upper.left > lower.left + inset && upper.left < lower.right - inset)
+                    {
+                        Vector3 pos = new Vector3(upper.left, lower.y, 0f);
+                        if (!HasNodeNearPosition(pos, 0.3f))
+                        {
+                            AddNode(PlatformNodeData.CreateEdge(nextNodeId++, pos, lower.collider, true, lower.isOneWay));
+                        }
+                    }
+
+                    // 上层右边缘在下层范围内 → 在下层的 upper.right 位置生成节点
+                    if (upper.right > lower.left + inset && upper.right < lower.right - inset)
+                    {
+                        Vector3 pos = new Vector3(upper.right, lower.y, 0f);
+                        if (!HasNodeNearPosition(pos, 0.3f))
+                        {
+                            AddNode(PlatformNodeData.CreateEdge(nextNodeId++, pos, lower.collider, false, lower.isOneWay));
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
         /// 判断多边形顶点是否为顺时针顺序
         /// 使用 Shoelace 公式计算有符号面积
         /// </summary>
@@ -620,14 +685,17 @@ namespace ZeroEngine.Pathfinding2D
         /// </summary>
         private void GenerateNodesForEdge(float left, float right, float y, Collider2D collider, bool isOneWay)
         {
+            // 缓存边缘数据，用于后续全局转换节点生成
+            _allEdgesCache.Add((left, right, y, collider, isOneWay));
+
             float width = right - left;
             float nodeSpacing = config.ActualNodeSpacing;
 
-            // 平台太窄，只生成一个中心节点
+            // 平台太窄，生成一个边缘节点（允许跳跃链接从此节点发起）
             if (width < config.MinPlatformWidth)
             {
                 Vector3 centerPos = new Vector3((left + right) / 2f, y, 0f);
-                AddNode(PlatformNodeData.CreateSurface(nextNodeId++, centerPos, collider, isOneWay));
+                AddNode(PlatformNodeData.CreateEdge(nextNodeId++, centerPos, collider, true, isOneWay));
                 return;
             }
 
