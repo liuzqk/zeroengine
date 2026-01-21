@@ -496,6 +496,30 @@ namespace ZeroEngine.Pathfinding2D
                             AddNode(PlatformNodeData.CreateEdge(nextNodeId++, pos, lower.collider, false, lower.isOneWay));
                         }
                     }
+
+                    // === 新增：向上生成落地点 ===
+                    // 检查下层平台的边缘是否在上层平台的 X 范围内
+                    // 如果是，在上层平台对应位置生成落地点，使垂直跳跃能够成功
+
+                    // 下层左边缘在上层范围内 → 在上层的 lower.left 位置生成落地点
+                    if (lower.left > upper.left + inset && lower.left < upper.right - inset)
+                    {
+                        Vector3 pos = new Vector3(lower.left, upper.y, 0f);
+                        if (!HasNodeNearPosition(pos, 0.3f))
+                        {
+                            AddNode(PlatformNodeData.CreateEdge(nextNodeId++, pos, upper.collider, true, upper.isOneWay));
+                        }
+                    }
+
+                    // 下层右边缘在上层范围内 → 在上层的 lower.right 位置生成落地点
+                    if (lower.right > upper.left + inset && lower.right < upper.right - inset)
+                    {
+                        Vector3 pos = new Vector3(lower.right, upper.y, 0f);
+                        if (!HasNodeNearPosition(pos, 0.3f))
+                        {
+                            AddNode(PlatformNodeData.CreateEdge(nextNodeId++, pos, upper.collider, false, upper.isOneWay));
+                        }
+                    }
                 }
             }
         }

@@ -2,12 +2,31 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.6.14] - 2025-01-21
+
+### Fixed
+- 修复宽平台之间跳跃链接不足的问题
+  - **向上生成落地点**: `GenerateGlobalHeightTransitionNodes()` 现在会在上层平台生成与下层边缘对应的落地点
+  - 之前：只在下层平台生成起跳点，导致缺少垂直跳跃的目标节点
+  - 现在：双向生成节点（下层起跳点 + 上层落地点），使垂直对齐的跳跃能够成功
+  - 预期效果：边缘节点从 11 增加到 15+，跳跃链接从 3 增加到 10+
+
+### Changed
+- 优化诊断日志：超高度失败统计现在仅计算边缘节点，排除 Surface 节点噪音
+  - 预期效果："超高度" 统计从 1701 降至 < 50
+
 ## [1.6.13] - 2025-01-21
 
 ### Added
 - JumpLinkCalculator 添加详细边缘节点诊断日志
   - 输出每个边缘节点的坐标、NodeId、OneWay 属性
   - 便于调试跳跃链接生成问题
+
+### Fixed
+- 修复单向平台与普通平台之间的跳跃链接生成问题
+  - **垂直跳跃**: 允许水平距离小但高度差足够大的跳跃（修复垂直对齐边缘无链接问题）
+  - **DropThrough 判断**: 改用高度差判断同一平台，支持 Tilemap Composite Collider 场景
+  - 预期效果：单向平台 (Y=9.25) 与相邻平台之间的跳跃/下落链接正常生成
 
 ## [1.6.12] - 2025-01-21
 
@@ -57,16 +76,3 @@ All notable changes to this package will be documented in this file.
 
 ### Fixed
 - 修复侧面墙壁突出平台无法生成 Jump 链接的问题
-  - 问题根因：同一 CompositeCollider 的不同高度边缘，边缘节点只在最左/最右端生成
-  - 导致上下层平台边缘节点水平距离过大，超过 MaxHorizontalDistance 限制
-  - 解决方案：检测高度交界处，在下层平台的对应位置生成额外边缘节点
-
-## [1.6.7] - 2025-01-20
-
-### Added
-- 添加同 Collider 轨迹阻挡诊断日志
-
-## [1.6.6] - 2025-01-20
-
-### Fixed
-- JumpLinkCalculator 删除"只连最近边缘"限制，支持多边缘连接

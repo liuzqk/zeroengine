@@ -169,7 +169,8 @@ namespace ZeroEngine.Pathfinding2D
                         // 这样即使最近的边缘被遮挡，也能连接到其他开阔的边缘
 
                         // 跳跃链接需要最小水平距离（防止原地跳）
-                        if (horizontalDist < config.MinLinkDistance) continue;
+                        // 允许垂直跳跃：水平距离小但高度差足够大时不过滤
+                        if (horizontalDist < config.MinLinkDistance && Mathf.Abs(verticalDist) < 1f) continue;
 
                         if (horizontalDist <= config.MaxHorizontalDistance)
                         {
@@ -199,7 +200,8 @@ namespace ZeroEngine.Pathfinding2D
                     }
                     else if (verticalDist > config.MaxJumpHeight)
                     {
-                        jumpFailedHeight++;
+                        // 仅统计边缘节点的超高度失败，排除 Surface 节点的噪音
+                        if (isEdgeNode) jumpFailedHeight++;
                     }
                     // 目标在下方 - 尝试下落（不需要 MinLinkDistance 检查，垂直下落也有效）
                     else if (verticalDist < -0.5f && Mathf.Abs(verticalDist) <= config.MaxFallHeight)
@@ -455,8 +457,9 @@ namespace ZeroEngine.Pathfinding2D
 
             foreach (var toNode in allNodes)
             {
-                // 跳过同一平台
-                if (toNode.PlatformCollider == fromNode.PlatformCollider) continue;
+                // 跳过同一平台（使用高度差判断，支持 Tilemap Composite Collider）
+                float heightDiff = Mathf.Abs(toNode.Position.y - fromNode.Position.y);
+                if (heightDiff < 0.5f && toNode.PlatformCollider == fromNode.PlatformCollider) continue;
 
                 // 目标必须在正下方附近
                 float horizontalDist = Mathf.Abs(toNode.Position.x - startPos.x);
