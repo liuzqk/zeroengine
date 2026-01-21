@@ -177,7 +177,15 @@ namespace ZeroEngine.Pathfinding2D
                             else
                             {
                                 if (failReason == "unreachable") jumpFailedReachable++;
-                                else if (failReason == "trajectory") jumpFailedTrajectory++;
+                                else if (failReason == "trajectory")
+                                {
+                                    jumpFailedTrajectory++;
+                                    // 诊断日志：同一 Collider 但轨迹被阻挡
+                                    if (fromNode.PlatformCollider == toNode.PlatformCollider)
+                                    {
+                                        Debug.Log($"[JumpLink诊断] 同Collider轨迹阻挡: {fromNode.Position} -> {toNode.Position}, 高度差={verticalDist:F2}");
+                                    }
+                                }
                             }
                         }
                         else
