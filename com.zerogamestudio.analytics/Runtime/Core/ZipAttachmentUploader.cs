@@ -73,12 +73,20 @@ namespace ZGS.Analytics
                         string root = dir;
                         string logPath = Path.Combine(root, "Player.log");
 
-                        // Player.log 复制后打包，避开文件锁
+                        // Player.log 使用 FileShare.ReadWrite 读取，避开文件锁
                         if (File.Exists(logPath))
                         {
-                            string copy = Path.Combine(tmpDir, "Player_copy.log");
-                            File.Copy(logPath, copy, true);
-                            zip.CreateEntryFromFile(copy, prefixDir + "Player.log");
+                            try
+                            {
+                                var entry = zip.CreateEntry(prefixDir + "Player.log");
+                                using var entryStream = entry.Open();
+                                using var fileStream = new FileStream(logPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                                fileStream.CopyTo(entryStream);
+                            }
+                            catch (IOException ex)
+                            {
+                                AnalyticsLog.LogWarning($"[ZipAttachmentUploader] 无法读取 Player.log: {ex.Message}");
+                            }
                         }
 
                         foreach (string file in Directory.GetFiles(root, "*", SearchOption.AllDirectories))
