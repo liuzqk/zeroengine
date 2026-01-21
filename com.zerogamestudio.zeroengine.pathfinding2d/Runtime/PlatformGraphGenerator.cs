@@ -437,13 +437,15 @@ namespace ZeroEngine.Pathfinding2D
 
         /// <summary>
         /// 从多边形路径中找出顶部边缘
-        /// 使用法线方向判断是否是可站立表面（朝上的边）
+        /// 使用射线检测判断是否是可站立表面
         /// </summary>
         private List<(float left, float right, float y)> FindTopEdges(List<Vector2> points)
         {
             var edges = new List<(float left, float right, float y)>();
             const float slopeThreshold = 0.5f; // 斜率阈值，放宽以支持斜坡
             const float mergeThreshold = 0.1f; // Y 坐标合并阈值
+            const float standingHeight = 0.5f; // 降低检测高度，避免被墙壁阻挡
+            const float rayLength = 1.0f;
 
             if (points.Count < 3) return edges;
 
@@ -465,19 +467,21 @@ namespace ZeroEngine.Pathfinding2D
                 float slope = dy / dx;
                 if (slope > slopeThreshold) continue;
 
-                // 使用法线方向判断：顶部边缘的法线应该朝上
-                // 对于逆时针顶点顺序，边 (p1 -> p2) 的外法线 = (dy, -dx) 归一化
-                // 对于顺时针顶点顺序，边 (p1 -> p2) 的外法线 = (-dy, dx) 归一化
-                // CompositeCollider2D 通常使用顺时针顶点顺序（外轮廓）
-                Vector2 edgeDir = p2 - p1;
-                Vector2 normal = new Vector2(-edgeDir.y, edgeDir.x).normalized;
+                float midX = (p1.x + p2.x) / 2f;
+                float midY = (p1.y + p2.y) / 2f;
 
-                // 顶部边缘：法线 Y 分量 > 0.7（朝上）
-                bool isTopEdge = normal.y > 0.7f;
+                // 从边缘上方向下发射射线
+                Vector2 rayOrigin = new Vector2(midX, midY + standingHeight);
+                RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayLength, config.AllPlatformLayers);
+
+                // 判断条件：射线命中且命中点接近边缘中点，且上方有足够空间
+                bool isTopEdge = hit.collider != null &&
+                                 Mathf.Abs(hit.point.y - midY) < 0.3f &&
+                                 (rayOrigin.y - hit.point.y) > standingHeight * 0.5f;
 
                 if (isTopEdge)
                 {
-                    float edgeY = (p1.y + p2.y) / 2f;
+                    float edgeY = midY;
                     float left = Mathf.Min(p1.x, p2.x);
                     float right = Mathf.Max(p1.x, p2.x);
                     edges.Add((left, right, edgeY));
