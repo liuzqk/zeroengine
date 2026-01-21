@@ -437,15 +437,13 @@ namespace ZeroEngine.Pathfinding2D
 
         /// <summary>
         /// 从多边形路径中找出顶部边缘
-        /// 使用射线检测判断是否是可站立表面
+        /// 使用法线方向判断是否是可站立表面（朝上的边）
         /// </summary>
         private List<(float left, float right, float y)> FindTopEdges(List<Vector2> points)
         {
             var edges = new List<(float left, float right, float y)>();
             const float slopeThreshold = 0.5f; // 斜率阈值，放宽以支持斜坡
             const float mergeThreshold = 0.1f; // Y 坐标合并阈值
-            const float standingHeight = 1.0f; // 站立所需高度
-            const float rayLength = 1.5f; // 射线长度
 
             if (points.Count < 3) return edges;
 
@@ -467,26 +465,19 @@ namespace ZeroEngine.Pathfinding2D
                 float slope = dy / dx;
                 if (slope > slopeThreshold) continue;
 
-                // 计算边的中点
-                float midX = (p1.x + p2.x) / 2f;
-                float midY = (p1.y + p2.y) / 2f;
+                // 使用法线方向判断：顶部边缘的法线应该朝上
+                // 对于逆时针顶点顺序，边 (p1 -> p2) 的外法线 = (dy, -dx) 归一化
+                // 对于顺时针顶点顺序，边 (p1 -> p2) 的外法线 = (-dy, dx) 归一化
+                // CompositeCollider2D 通常使用顺时针顶点顺序（外轮廓）
+                Vector2 edgeDir = p2 - p1;
+                Vector2 normal = new Vector2(-edgeDir.y, edgeDir.x).normalized;
 
-                // 从边的上方较高处向下发射射线
-                // 如果射线能命中这条边，且射线起点到边之间没有其他障碍物，说明是可站立表面
-                Vector2 rayOrigin = new Vector2(midX, midY + standingHeight);
-                RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.down, rayLength, config.AllPlatformLayers);
-
-                // 判断条件：
-                // 1. 射线命中了碰撞体
-                // 2. 命中点接近这条边的 Y 坐标（误差 0.2 以内）
-                // 3. 射线起点到命中点之间有足够的空间（至少 standingHeight * 0.8）
-                bool isTopEdge = hit.collider != null &&
-                                 Mathf.Abs(hit.point.y - midY) < 0.2f &&
-                                 (rayOrigin.y - hit.point.y) > standingHeight * 0.8f;
+                // 顶部边缘：法线 Y 分量 > 0.7（朝上）
+                bool isTopEdge = normal.y > 0.7f;
 
                 if (isTopEdge)
                 {
-                    float edgeY = midY;
+                    float edgeY = (p1.y + p2.y) / 2f;
                     float left = Mathf.Min(p1.x, p2.x);
                     float right = Mathf.Max(p1.x, p2.x);
                     edges.Add((left, right, edgeY));

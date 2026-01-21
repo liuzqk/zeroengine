@@ -2,6 +2,13 @@
 
 All notable changes to this package will be documented in this file.
 
+## [1.6.9] - 2025-01-21
+
+### Changed
+- `FindTopEdges()` 改用法线方向判断顶部边缘，替代射线检测
+  - 之前：射线检测可能被上方墙壁阻挡，导致侧面突出平台边缘无法识别
+  - 现在：直接通过边的法线方向判断（法线 Y > 0.7 即为顶部边缘）
+
 ## [1.6.8] - 2025-01-21
 
 ### Added
