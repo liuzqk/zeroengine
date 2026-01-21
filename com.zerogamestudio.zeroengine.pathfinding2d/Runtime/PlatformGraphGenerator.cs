@@ -348,6 +348,91 @@ namespace ZeroEngine.Pathfinding2D
             {
                 GenerateNodesForEdge(edge.left, edge.right, edge.y, collider, isOneWay);
             }
+
+            // 检测高度变化处并生成额外边缘节点（用于侧面突出平台跳跃）
+            GenerateHeightTransitionNodes(topEdges, collider, isOneWay);
+        }
+
+        /// <summary>
+        /// 检测高度变化处并生成额外边缘节点
+        /// 解决侧面墙壁突出平台无法生成 Jump 链接的问题
+        ///
+        /// 场景示意：
+        ///     │       │
+        ///     │  ┌────┤  ← 上层突出平台 (upper)
+        ///     │  │    │
+        ///     │──┘    │     ← 这里需要额外的边缘节点！
+        ///     │       │
+        /// ────┴───────┴────  ← 下层平台 (lower)
+        ///
+        /// 在下层平台的 upper.left 和 upper.right 位置生成额外边缘节点，
+        /// 使得 JumpLinkCalculator 能在水平距离内找到跳跃目标。
+        /// </summary>
+        private void GenerateHeightTransitionNodes(List<(float left, float right, float y)> edges, Collider2D collider, bool isOneWay)
+        {
+            if (edges.Count < 2) return;
+
+            // 按 Y 坐标升序排序
+            var sortedByY = new List<(float left, float right, float y)>(edges);
+            sortedByY.Sort((a, b) => a.y.CompareTo(b.y));
+
+            // 检测相邻高度层的交界处
+            for (int i = 0; i < sortedByY.Count; i++)
+            {
+                var lower = sortedByY[i];
+
+                for (int j = i + 1; j < sortedByY.Count; j++)
+                {
+                    var upper = sortedByY[j];
+
+                    // 高度差太大（超过最大跳跃高度），跳过
+                    float heightDiff = upper.y - lower.y;
+                    if (heightDiff > 8f) continue;
+
+                    // 高度差太小（同一平面），跳过
+                    if (heightDiff < 0.5f) continue;
+
+                    // 检查上层平台的边缘是否在下层平台的 X 范围内
+                    // 如果是，说明存在高度交界点，需要在下层平台生成额外边缘节点
+
+                    // 上层左边缘在下层范围内 → 在下层的 upper.left 位置生成节点
+                    if (upper.left > lower.left + config.EdgeInset && upper.left < lower.right - config.EdgeInset)
+                    {
+                        Vector3 transitionPos = new Vector3(upper.left, lower.y, 0f);
+                        // 检查是否已存在相近位置的节点
+                        if (!HasNodeNearPosition(transitionPos, 0.3f))
+                        {
+                            AddNode(PlatformNodeData.CreateEdge(nextNodeId++, transitionPos, collider, true, isOneWay));
+                        }
+                    }
+
+                    // 上层右边缘在下层范围内 → 在下层的 upper.right 位置生成节点
+                    if (upper.right > lower.left + config.EdgeInset && upper.right < lower.right - config.EdgeInset)
+                    {
+                        Vector3 transitionPos = new Vector3(upper.right, lower.y, 0f);
+                        if (!HasNodeNearPosition(transitionPos, 0.3f))
+                        {
+                            AddNode(PlatformNodeData.CreateEdge(nextNodeId++, transitionPos, collider, false, isOneWay));
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 检查指定位置附近是否已存在节点
+        /// </summary>
+        private bool HasNodeNearPosition(Vector3 position, float threshold)
+        {
+            float thresholdSq = threshold * threshold;
+            foreach (var node in Nodes)
+            {
+                if ((node.Position - position).sqrMagnitude < thresholdSq)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
