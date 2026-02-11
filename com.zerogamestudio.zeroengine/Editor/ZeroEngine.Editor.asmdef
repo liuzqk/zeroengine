@@ -15,6 +15,7 @@
         "ZeroEngine.Social",
         "ZeroEngine.Character",
         "ZeroEngine.Audio",
+        "ZeroEngine.Dashboard.Editor",
         "Unity.InputSystem"
     ],
     "includePlatforms": [
