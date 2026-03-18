@@ -145,11 +145,14 @@ namespace ZeroEngine.Pathfinding2D
             IsGenerated = true;
             LastGenerateTime = Time.time;
 
+            if (PathfindingLogSettings.EnableGenerationSummary)
+            {
 #if UNITY_EDITOR
-            Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接, 空间索引: {SpatialGrid.GetDebugInfo()}");
+                Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接, 空间索引: {SpatialGrid.GetDebugInfo()}");
 #else
-            Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接");
+                Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接");
 #endif
+            }
         }
 
         /// <summary>
