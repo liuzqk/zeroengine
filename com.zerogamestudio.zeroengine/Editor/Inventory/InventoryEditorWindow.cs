@@ -108,7 +108,7 @@ namespace ZeroEngine.Editor.Inventory
             EditorGUILayout.HelpBox("This Advanced Inventory Editor requires 'Odin Inspector' to be installed.", MessageType.Warning);
             if (GUILayout.Button("Check Plugins"))
             {
-                PluginManager.CheckPlugins();
+                Debug.Log("[ZeroEngine] Please install Odin Inspector for advanced inventory editing.");
             }
             
             EditorGUILayout.Space();

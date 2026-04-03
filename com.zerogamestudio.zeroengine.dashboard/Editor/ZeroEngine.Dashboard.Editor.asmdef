@@ -2,7 +2,9 @@
     "name": "ZeroEngine.Dashboard.Editor",
     "rootNamespace": "ZeroEngine.Editor",
     "references": [
-        "ZeroEngine.Core"
+        "ZeroEngine.Core",
+        "ZeroEngine.Economy",
+        "ZeroEngine.Persistence"
     ],
     "includePlatforms": [
         "Editor"
