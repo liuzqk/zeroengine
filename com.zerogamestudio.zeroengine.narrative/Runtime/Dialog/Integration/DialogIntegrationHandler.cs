@@ -4,6 +4,7 @@ using UnityEngine;
 using ZeroEngine.Core;
 using ZeroEngine.Quest;
 using ZeroEngine.Inventory;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Dialog.Integration
 {
@@ -86,7 +87,7 @@ namespace ZeroEngine.Dialog.Integration
         {
             if (_logCallbacks)
             {
-                Debug.Log($"[DialogIntegration] Callback: {callbackId}, Param: {parameter}");
+                ZeroLog.Info(ZeroLog.Modules.Dialog, $"Callback: {callbackId}, Param: {parameter}");
             }
 
             switch (callbackId)
@@ -148,7 +149,7 @@ namespace ZeroEngine.Dialog.Integration
             var questManager = QuestManager.Instance;
             if (questManager == null)
             {
-                Debug.LogWarning("[DialogIntegration] QuestManager not found");
+                ZeroLog.Warning(ZeroLog.Modules.Quest, "QuestManager not found");
                 return;
             }
 
@@ -166,7 +167,7 @@ namespace ZeroEngine.Dialog.Integration
             if (questManager == null) return;
 
             // Quest system doesn't have direct complete, use submit
-            Debug.Log($"[DialogIntegration] Quest '{questId}' marked for completion");
+            ZeroLog.Info(ZeroLog.Modules.Quest, $"Quest '{questId}' marked for completion");
             SetResultVariable("lastQuestResult", true);
         }
 
@@ -204,7 +205,7 @@ namespace ZeroEngine.Dialog.Integration
             var inventory = InventoryManager.Instance;
             if (inventory == null)
             {
-                Debug.LogWarning("[DialogIntegration] InventoryManager not found");
+                ZeroLog.Warning(ZeroLog.Modules.Dialog, "InventoryManager not found");
                 return;
             }
 
@@ -213,7 +214,7 @@ namespace ZeroEngine.Dialog.Integration
 
             if (_logCallbacks)
             {
-                Debug.Log($"[DialogIntegration] Give item: {itemId} x{amount}, Success: {success}");
+                ZeroLog.Info(ZeroLog.Modules.Dialog, $"Give item: {itemId} x{amount}, Success: {success}");
             }
         }
 
@@ -234,7 +235,7 @@ namespace ZeroEngine.Dialog.Integration
 
             if (_logCallbacks)
             {
-                Debug.Log($"[DialogIntegration] Take item: {itemId} x{amount}, Success: {hasItem}");
+                ZeroLog.Info(ZeroLog.Modules.Dialog, $"Take item: {itemId} x{amount}, Success: {hasItem}");
             }
         }
 
@@ -320,7 +321,7 @@ namespace ZeroEngine.Dialog.Integration
             if (string.IsNullOrEmpty(soundKey)) return;
 
             // Hook for Audio integration
-            Debug.Log($"[DialogIntegration] PlaySound: {soundKey}");
+            ZeroLog.Info(ZeroLog.Modules.Dialog, $"PlaySound: {soundKey}");
             // AudioManager.Instance?.PlaySFX(soundKey);
         }
 

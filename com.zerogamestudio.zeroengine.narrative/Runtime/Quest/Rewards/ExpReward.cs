@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using ZeroEngine.Core;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Quest
 {
@@ -21,7 +22,7 @@ namespace ZeroEngine.Quest
 
             // 通过事件通知经验系统
             EventManager.Trigger(GameEvents.ExpGained, Amount);
-            Debug.Log($"[Quest] Granted {Amount} EXP");
+            ZeroLog.Info(ZeroLog.Modules.Quest, $"Granted {Amount} EXP");
             return true;
         }
 

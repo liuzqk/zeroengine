@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using ZeroEngine.Inventory;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Quest
 {
@@ -40,17 +41,17 @@ namespace ZeroEngine.Quest
 
                 if (success)
                 {
-                    Debug.Log($"[Quest] Granted {Quantity}x {ItemId}");
+                    ZeroLog.Info(ZeroLog.Modules.Quest, $"Granted {Quantity}x {ItemId}");
                     return true;
                 }
                 else
                 {
-                    Debug.LogWarning($"[Quest] Failed to grant item {ItemId} (inventory full?)");
+                    ZeroLog.Warning(ZeroLog.Modules.Quest, $"Failed to grant item {ItemId} (inventory full?)");
                     return false;
                 }
             }
 
-            Debug.LogWarning("[Quest] InventoryManager not available");
+            ZeroLog.Warning(ZeroLog.Modules.Quest, "InventoryManager not available");
             return false;
         }
 

@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using ZeroEngine.Core;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Quest
 {
@@ -24,7 +25,7 @@ namespace ZeroEngine.Quest
 
             // 通过事件通知货币系统
             EventManager.Trigger(GameEvents.CurrencyGained, CurrencyType.ToString(), Amount);
-            Debug.Log($"[Quest] Granted {Amount} {CurrencyType}");
+            ZeroLog.Info(ZeroLog.Modules.Quest, $"Granted {Amount} {CurrencyType}");
             return true;
         }
 

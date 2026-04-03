@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Save
 {
@@ -170,7 +171,7 @@ namespace ZeroEngine.Save
         {
             _lastAutoSaveTime = Time.realtimeSinceStartup;
 
-            Debug.Log($"[AutoSave] Triggered: {trigger}");
+            ZeroLog.Info(ZeroLog.Modules.Save, $"[AutoSave] Triggered: {trigger}");
 
             OnAutoSaveTriggered?.Invoke(trigger);
 
@@ -178,11 +179,11 @@ namespace ZeroEngine.Save
             {
                 if (success)
                 {
-                    Debug.Log($"[AutoSave] Completed: {trigger}");
+                    ZeroLog.Info(ZeroLog.Modules.Save, $"[AutoSave] Completed: {trigger}");
                 }
                 else
                 {
-                    Debug.LogWarning($"[AutoSave] Failed: {trigger}");
+                    ZeroLog.Warning(ZeroLog.Modules.Save, $"[AutoSave] Failed: {trigger}");
                 }
             });
         }
@@ -201,7 +202,7 @@ namespace ZeroEngine.Save
         {
             if (CanAutoSave(AutoSaveTrigger.QuestComplete))
             {
-                Debug.Log($"[AutoSave] Quest completed: {questId}");
+                ZeroLog.Info(ZeroLog.Modules.Save, $"[AutoSave] Quest completed: {questId}");
                 ExecuteAutoSave(AutoSaveTrigger.QuestComplete);
             }
         }
@@ -213,7 +214,7 @@ namespace ZeroEngine.Save
         {
             if (CanAutoSave(AutoSaveTrigger.ImportantEvent))
             {
-                Debug.Log($"[AutoSave] Important event: {eventName}");
+                ZeroLog.Info(ZeroLog.Modules.Save, $"[AutoSave] Important event: {eventName}");
                 ExecuteAutoSave(AutoSaveTrigger.ImportantEvent);
             }
         }

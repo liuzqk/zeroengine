@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ZeroEngine.Core;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Quest
 {
@@ -51,7 +52,7 @@ namespace ZeroEngine.Quest
         {
             // Logic to open Dialogue UI
             // EventManager.Trigger("ShowDialogue", dialogueConfig, this);
-            Debug.Log($"Interacted with {providerId}");
+            ZeroLog.Info(ZeroLog.Modules.Quest, $"Interacted with {providerId}");
         }
     }
 }

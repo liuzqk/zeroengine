@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Save
 {
@@ -88,7 +89,7 @@ namespace ZeroEngine.Save
 
                 if (_cachedCamera == null)
                 {
-                    Debug.LogWarning("[ScreenshotCapture] No camera found.");
+                    ZeroLog.Warning(ZeroLog.Modules.Save, "No camera found.");
                     return null;
                 }
 
