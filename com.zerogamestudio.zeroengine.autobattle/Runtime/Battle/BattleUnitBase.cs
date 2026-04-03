@@ -76,6 +76,16 @@ namespace ZeroEngine.AutoBattle.Battle
         /// </summary>
         protected float _attackCooldown;
 
+        /// <summary>
+        /// 移动冷却计时器
+        /// </summary>
+        protected float _moveCooldown;
+
+        /// <summary>
+        /// 移动冷却时间（秒）
+        /// </summary>
+        protected float _moveCooldownTime = 0.8f;
+
         // 事件
         public event Action<float, float> OnHealthChanged;
         public event Action OnDeath;
@@ -150,16 +160,10 @@ namespace ZeroEngine.AutoBattle.Battle
         {
             if (!IsAlive) return;
 
-            // 更新攻击冷却
-            if (_attackCooldown > 0)
-            {
-                _attackCooldown -= deltaTime;
-            }
+            if (_attackCooldown > 0) _attackCooldown -= deltaTime;
+            if (_moveCooldown > 0) _moveCooldown -= deltaTime;
 
-            // 更新技能冷却
             SkillSlots.UpdateCooldowns(deltaTime);
-
-            // AI 决策
             ProcessAI(deltaTime, battleManager);
         }
 
@@ -168,7 +172,6 @@ namespace ZeroEngine.AutoBattle.Battle
         /// </summary>
         protected virtual void ProcessAI(float deltaTime, AutoBattleManager battleManager)
         {
-            // 获取目标
             var target = FindTarget(battleManager);
             if (target == null) return;
 
@@ -180,11 +183,22 @@ namespace ZeroEngine.AutoBattle.Battle
                 return;
             }
 
-            // 普通攻击
-            if (_attackCooldown <= 0 && IsInRange(target))
+            // 在攻击范围内 → 攻击
+            if (IsInRange(target, battleManager))
             {
-                PerformAttack(target);
-                _attackCooldown = 1f / AttackSpeed;
+                if (_attackCooldown <= 0)
+                {
+                    PerformAttack(target);
+                    _attackCooldown = 1f / AttackSpeed;
+                }
+                return;
+            }
+
+            // 不在范围内 → 尝试移动靠近
+            if (_moveCooldown <= 0 && AIConfig.MovementTendency != MovementTendency.Hold)
+            {
+                TryMoveTowards(target, battleManager);
+                _moveCooldown = _moveCooldownTime;
             }
         }
 
@@ -299,16 +313,73 @@ namespace ZeroEngine.AutoBattle.Battle
         }
 
         /// <summary>
-        /// 检查目标是否在攻击范围内
+        /// 检查目标是否在攻击范围内（支持跨棋盘）
         /// </summary>
-        protected bool IsInRange(IBattleUnit target)
+        protected bool IsInRange(IBattleUnit target, AutoBattleManager battleManager = null)
         {
             if (CurrentCell == null || target.CurrentCell == null)
                 return false;
 
-            // 计算跨棋盘距离（简化：使用列差）
-            int distance = Mathf.Abs(CurrentCell.X - target.CurrentCell.X);
-            return distance <= AttackRange;
+            // 同阵营：直接曼哈顿距离
+            if (target.Team == Team)
+            {
+                int dist = Mathf.Abs(CurrentCell.X - target.CurrentCell.X)
+                         + Mathf.Abs(CurrentCell.Y - target.CurrentCell.Y);
+                return dist <= AttackRange;
+            }
+
+            // 跨阵营：两个棋盘相邻
+            // 玩家棋盘右边缘(X=W-1) 紧邻 敌方棋盘左边缘(X=0)
+            int boardWidth = battleManager?.PlayerBoard?.Width ?? AutoBattleManager.DefaultBoardWidth;
+            int xDist;
+            if (Team == BattleTeam.Player)
+            {
+                xDist = (boardWidth - 1 - CurrentCell.X) + target.CurrentCell.X + 1;
+            }
+            else
+            {
+                xDist = (boardWidth - 1 - CurrentCell.X) + target.CurrentCell.X + 1;
+            }
+            int yDist = Mathf.Abs(CurrentCell.Y - target.CurrentCell.Y);
+
+            return (xDist + yDist) <= AttackRange;
+        }
+
+        /// <summary>
+        /// 尝试向目标方向移动一格
+        /// </summary>
+        protected virtual void TryMoveTowards(IBattleUnit target, AutoBattleManager battleManager)
+        {
+            if (CurrentCell == null || target.CurrentCell == null) return;
+
+            var myBoard = Team == BattleTeam.Player
+                ? battleManager.PlayerBoard
+                : battleManager.EnemyBoard;
+
+            // 玩家向 X+ 靠近敌方，敌方向 X- 靠近玩家
+            int dx = Team == BattleTeam.Player ? 1 : -1;
+
+            // Y 轴对齐目标
+            int dy = 0;
+            int yDiff = target.CurrentCell.Y - CurrentCell.Y;
+            if (yDiff != 0) dy = yDiff > 0 ? 1 : -1;
+
+            // 优先 X 方向移动
+            if (dx != 0)
+            {
+                int newX = CurrentCell.X + dx;
+                if (myBoard.IsValidPosition(newX, CurrentCell.Y)
+                    && myBoard.MoveUnit(this, newX, CurrentCell.Y))
+                    return;
+            }
+
+            // X 走不了，尝试 Y 方向
+            if (dy != 0)
+            {
+                int newY = CurrentCell.Y + dy;
+                if (myBoard.IsValidPosition(CurrentCell.X, newY))
+                    myBoard.MoveUnit(this, CurrentCell.X, newY);
+            }
         }
 
         /// <summary>

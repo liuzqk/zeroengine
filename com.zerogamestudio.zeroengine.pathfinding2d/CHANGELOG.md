@@ -2,14 +2,6 @@
 
 All notable changes to this package will be documented in this file.
 
-## [1.6.16] - 2026-03-18
-
-### Changed
-- 将平台图生成与 JumpLink 诊断日志改为默认关闭
-  - 新增 `PathfindingLogSettings` 统一控制基础摘要日志与详细诊断日志
-  - 避免在编辑器里每次生成平台图时输出大量边缘节点与统计信息
-  - 便于项目侧通过控制台命令或脚本按需开启日志
-
 ## [1.6.15] - 2025-01-21
 
 ### Fixed

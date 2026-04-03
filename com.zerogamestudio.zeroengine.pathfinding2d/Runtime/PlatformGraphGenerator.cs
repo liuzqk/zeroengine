@@ -145,14 +145,7 @@ namespace ZeroEngine.Pathfinding2D
             IsGenerated = true;
             LastGenerateTime = Time.time;
 
-            if (PathfindingLogSettings.EnableGenerationSummary)
-            {
-#if UNITY_EDITOR
-                Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接, 空间索引: {SpatialGrid.GetDebugInfo()}");
-#else
-                Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接");
-#endif
-            }
+            Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接, 空间索引: {SpatialGrid.GetDebugInfo()}");
         }
 
         /// <summary>
@@ -1119,11 +1112,7 @@ namespace ZeroEngine.Pathfinding2D
             if (SpatialGrid != null)
             {
                 sb.AppendLine("[空间索引]");
-#if UNITY_EDITOR
                 sb.AppendLine($"  {SpatialGrid.GetDebugInfo()}");
-#else
-                sb.AppendLine("  (Debug info only available in Editor)");
-#endif
             }
 
             sb.AppendLine("========== 报告结束 ==========");

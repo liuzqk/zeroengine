@@ -166,10 +166,18 @@ namespace ZeroEngine.UI
         private void Update()
         {
             // 处理ESC键关闭
+#if ENABLE_INPUT_SYSTEM
+            if (enableESCClose && UnityEngine.InputSystem.Keyboard.current != null
+                && UnityEngine.InputSystem.Keyboard.current.escapeKey.wasPressedThisFrame)
+            {
+                HandleCancelInput();
+            }
+#else
             if (enableESCClose && Input.GetKeyDown(KeyCode.Escape))
             {
                 HandleCancelInput();
             }
+#endif
         }
 
         private void InitializeLayers()
@@ -179,6 +187,9 @@ namespace ZeroEngine.UI
             {
                 _layerStacks[layer] = new Stack<UIViewBase>();
             }
+
+            // 确保 UIManager 自身有正确的 UI 组件
+            EnsureRootCanvas();
 
             // 如果没有设置层级容器，自动创建
             if (backgroundLayer == null)
@@ -215,6 +226,43 @@ namespace ZeroEngine.UI
             go.AddComponent<UnityEngine.UI.GraphicRaycaster>();
 
             return go.transform;
+        }
+
+        /// <summary>
+        /// 确保 UIManager 有根 Canvas 组件（自动创建）
+        /// </summary>
+        private void EnsureRootCanvas()
+        {
+            // 检查是否已有 Canvas
+            var canvas = GetComponent<Canvas>();
+            if (canvas == null)
+            {
+                // 添加 RectTransform（Canvas 需要）
+                if (GetComponent<RectTransform>() == null)
+                {
+                    gameObject.AddComponent<RectTransform>();
+                }
+
+                // 创建根 Canvas
+                canvas = gameObject.AddComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 0;
+
+                // 添加 CanvasScaler（自适应分辨率）
+                var scaler = gameObject.AddComponent<UnityEngine.UI.CanvasScaler>();
+                scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(1920, 1080);
+                scaler.screenMatchMode = UnityEngine.UI.CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+                scaler.matchWidthOrHeight = 0.5f;
+
+                // 添加 GraphicRaycaster（UI 交互需要）
+                gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+
+                LogDebug("[UIManager] Auto-created root Canvas");
+            }
+
+            // 设置 UI Layer
+            gameObject.layer = LayerMask.NameToLayer("UI");
         }
 
         #endregion

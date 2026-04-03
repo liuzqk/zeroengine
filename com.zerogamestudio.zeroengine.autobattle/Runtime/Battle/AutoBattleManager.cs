@@ -161,6 +161,18 @@ namespace ZeroEngine.AutoBattle.Battle
 
             // 触发战斗更新事件
             OnBattleTick?.Invoke(scaledDelta);
+
+            // 驱动所有存活单位的 AI
+            for (int i = 0; i < _playerUnits.Count; i++)
+            {
+                if (_playerUnits[i].IsAlive && _playerUnits[i] is BattleUnitBase playerUnit)
+                    playerUnit.BattleTick(scaledDelta, this);
+            }
+            for (int i = 0; i < _enemyUnits.Count; i++)
+            {
+                if (_enemyUnits[i].IsAlive && _enemyUnits[i] is BattleUnitBase enemyUnit)
+                    enemyUnit.BattleTick(scaledDelta, this);
+            }
         }
 
         /// <summary>

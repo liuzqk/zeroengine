@@ -21,7 +21,7 @@ namespace ZeroEngine.AutoBattle.AI
         /// <summary>
         /// 移动倾向
         /// </summary>
-        public MovementTendency MovementTendency { get; set; } = MovementTendency.Hold;
+        public MovementTendency MovementTendency { get; set; } = MovementTendency.Aggressive;
 
         /// <summary>
         /// 激进度 (0-1)

@@ -8,25 +8,29 @@ using Sirenix.OdinInspector;
 
 namespace ZeroEngine.AbilitySystem
 {
-    // ================ Interface & Base ================
+    // ---------------- Interface & Base ----------------
 
-    public abstract class ComponentData { }
+    public abstract class ComponentData
+    {
+        // For serialization polymorphism (Odin handles this automatically, 
+        // Unity needs [SerializeReference] if not using Odin, but we'll prioritize Odin flow as requested)
+    }
 
     /// <summary>
-    /// 运行时能力组件接口
+    /// Base class for runtime ability components
     /// </summary>
     public interface IAbilityComponent
     {
         void Initialize(ComponentData data, object source, AbilityDataSO abilityData);
     }
-
-    // ================ Data Base Classes ================
+    
+    // ---------------- Data Definitions ----------------
 
     [Serializable]
     public abstract class TriggerComponentData : ComponentData
     {
 #if ODIN_INSPECTOR
-        [FoldoutGroup("Settings", Expanded = true)]
+        [FoldoutGroup("Settings", Expanded = true)] 
         [LabelWidth(150)]
 #endif
         public bool TriggerMultipleTimes;
@@ -38,12 +42,14 @@ namespace ZeroEngine.AbilitySystem
         public int TriggerTimes = 1;
 
 #if ODIN_INSPECTOR
-        private Color GetBarColor(int value) => Color.Lerp(Color.red, Color.green, value / 10f);
+        private UnityEngine.Color GetBarColor(int value) => UnityEngine.Color.Lerp(UnityEngine.Color.red, UnityEngine.Color.green, value / 10f);
 #endif
     }
 
     [Serializable]
-    public abstract class ConditionComponentData : ComponentData { }
+    public abstract class ConditionComponentData : ComponentData
+    {
+    }
 
     [Serializable]
     public abstract class EffectComponentData : ComponentData
@@ -54,8 +60,6 @@ namespace ZeroEngine.AbilitySystem
         public AbilityTargetType TargetType;
     }
 
-    // ================ Enums ================
-
     public enum AbilityTargetType
     {
         Self,
@@ -63,34 +67,120 @@ namespace ZeroEngine.AbilitySystem
         All
     }
 
-    public enum DamageType
+    // ---------------- Concrete Examples (So the user sees something in the list) ----------------
+    
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Use Trigger (Manual)")]
+    [GUIColor(0.7f, 1f, 0.7f)]
+#endif
+    public class ManualTriggerData : TriggerComponentData
     {
-        Physical,
-        Magical,
-        True
+#if ODIN_INSPECTOR
+        [BoxGroup("Trigger Info")]
+#endif
+        public string ButtonName = "Fire";
+    }
+
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Interval Trigger")]
+    [GUIColor(0.7f, 1f, 1f)]
+#endif
+    public class IntervalTriggerData : TriggerComponentData
+    {
+        public float Interval = 1.0f;
+        public bool StartImmediately = true;
+    }
+
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("On Hit Trigger")]
+    [GUIColor(1f, 0.7f, 0.2f)]
+#endif
+    public class OnHitTriggerData : TriggerComponentData
+    {
+        public bool TriggerOnDealingDamage = true;
+        public bool TriggerOnTakingDamage = false;
+    }
+
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Deal Damage Effect")]
+    [GUIColor(1f, 0.7f, 0.7f)] // Reddish
+#endif
+    public class DamageEffectData : EffectComponentData
+    {
+        public int DamageAmount = 10;
+        
+#if ODIN_INSPECTOR
+        [HorizontalGroup("DamageInfo")]
+        [HideLabel]
+#endif
+        public DamageType DamageType = DamageType.Physical;
+    }
+    
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Heal Effect")]
+#endif
+    public class HealEffectData : EffectComponentData
+    {
+        public int HealAmount = 10;
+    }
+
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Spawn Projectile Effect")]
+    [GUIColor(0.8f, 0.6f, 1f)]
+#endif
+    public class SpawnProjectileEffectData : EffectComponentData
+    {
+        public GameObject ProjectilePrefab;
+        public float Speed = 10f;
+    }
+
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Apply Buff Effect")]
+    [GUIColor(1f, 0.6f, 0.8f)]
+#endif
+    public class ApplyBuffEffectData : EffectComponentData
+    {
+        public ZeroEngine.BuffSystem.BuffData BuffToApply;
+        public float DurationOverride = -1f; // -1 means use BuffData default
+    }
+
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Cooldown Condition")]
+#endif
+    public class CooldownConditionData : ConditionComponentData
+    {
+        public float CooldownSeconds = 1.0f;
+    }
+
+    [Serializable]
+#if ODIN_INSPECTOR
+    [LabelText("Resource Condition")]
+#endif
+    public class ResourceConditionData : ConditionComponentData
+    {
+        public ResourceType Resource = ResourceType.Mana;
+        public int RequiredAmount = 10;
     }
 
     public enum ResourceType
     {
         Health,
         Mana,
-        Stamina,
-        Rage,
-        Energy
+        Stamina
     }
 
-    public enum ComparisonType
+    public enum DamageType
     {
-        GreaterThan,
-        LessThan,
-        GreaterThanOrEqualTo,
-        LessThanOrEqualTo,
-        EqualTo
-    }
-
-    public enum LogicMode
-    {
-        And,
-        Or
+        Physical,
+        Magical,
+        True
     }
 }
