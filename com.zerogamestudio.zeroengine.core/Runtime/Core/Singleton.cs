@@ -1,4 +1,5 @@
 using UnityEngine;
+using ZeroEngine.Utils;
 
 namespace ZeroEngine.Core
 {
@@ -31,7 +32,7 @@ namespace ZeroEngine.Core
                     if (_instance != null) return _instance;
                     if (!_hasWarnedOnQuit)
                     {
-                        Debug.LogWarning($"[Singleton] Instance '{typeof(T)}' already destroyed. Returning null.");
+                        ZeroLog.Warning(ZeroLog.Modules.Core, $"Singleton '{typeof(T).Name}' already destroyed. Returning null.");
                         _hasWarnedOnQuit = true;
                     }
                     return null;
