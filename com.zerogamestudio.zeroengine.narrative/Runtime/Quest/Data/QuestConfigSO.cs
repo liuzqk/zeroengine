@@ -35,6 +35,7 @@ namespace ZeroEngine.Quest
         [Header("Settings")]
         public bool autoSubmit;
         public int repetitionLimit;
+        public QuestLifecycle lifecycle = QuestLifecycle.Persistent;
 
         [Header("NPC Interaction")]
         public string providerNpcId;

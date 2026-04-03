@@ -17,4 +17,10 @@ namespace ZeroEngine.Quest
         Collect,
         Custom
     }
+
+    public enum QuestLifecycle
+    {
+        Persistent, // Survives across runs
+        PerRun      // Cleared at end of each run
+    }
 }

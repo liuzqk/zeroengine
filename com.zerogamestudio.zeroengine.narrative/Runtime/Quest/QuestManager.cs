@@ -46,8 +46,7 @@ namespace ZeroEngine.Quest
         protected override void OnDestroy()
         {
             UnregisterEvents();
-            if (!SingletonRuntimeState.ApplicationIsQuitting)
-                SaveSlotManager.Instance?.Unregister(this);
+            SaveSlotManager.Instance?.Unregister(this);
             base.OnDestroy();
         }
 

@@ -6,8 +6,10 @@
         "ZeroEngine.Persistence",
         "ZeroEngine.Data",
         "ZeroEngine.Economy",
+        "ZeroEngine.Gameplay",
         "XNode",
-        "Steamworks.NET"
+        "com.rlabrecque.steamworks.net",
+        "Steamworks.NET.SteamManager"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -17,7 +19,7 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [
-        { "name": "com.rlabrecque.steamworks.net", "expression": "", "define": "STEAMWORKS" },
+        { "name": "com.rlabrecque.steamworks.net", "expression": "", "define": "STEAMWORKS_NET" },
         { "name": "com.github.siccity.xnode", "expression": "", "define": "XNODE_PRESENT" }
     ],
     "noEngineReferences": false
