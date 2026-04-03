@@ -46,7 +46,8 @@ namespace ZeroEngine.Quest
         protected override void OnDestroy()
         {
             UnregisterEvents();
-            SaveSlotManager.Instance?.Unregister(this);
+            if (!SingletonRuntimeState.ApplicationIsQuitting)
+                SaveSlotManager.Instance?.Unregister(this);
             base.OnDestroy();
         }
 
@@ -120,11 +121,12 @@ namespace ZeroEngine.Quest
             EventManager.Subscribe<string, int>(GameEvents.CharacterDied, OnEntityKilled);
             EventManager.Subscribe<string>(GameEvents.QuestProgressChanged, OnManualProgress);
 
-            // v1.2.0+ condition events
-            EventManager.Subscribe<ConditionEventData>(QuestEvents.EntityKilled, OnConditionEvent);
-            EventManager.Subscribe<ConditionEventData>(QuestEvents.ItemObtained, OnConditionEvent);
-            EventManager.Subscribe<ConditionEventData>(QuestEvents.Interacted, OnConditionEvent);
-            EventManager.Subscribe<ConditionEventData>(QuestEvents.LocationReached, OnConditionEvent);
+            // v1.2.0+ condition events — each handler forwards eventType to ProcessConditionEvent
+            EventManager.Subscribe<ConditionEventData>(QuestEvents.EntityKilled, OnEntityKilledCondition);
+            EventManager.Subscribe<ConditionEventData>(QuestEvents.ItemObtained, OnItemObtainedCondition);
+            EventManager.Subscribe<ConditionEventData>(QuestEvents.Interacted, OnInteractedCondition);
+            EventManager.Subscribe<ConditionEventData>(QuestEvents.LocationReached, OnLocationReachedCondition);
+            EventManager.Subscribe<ConditionEventData>(QuestEvents.SurviveCompleted, OnSurviveCompletedCondition);
         }
 
         private void UnregisterEvents()
@@ -133,10 +135,11 @@ namespace ZeroEngine.Quest
             EventManager.Unsubscribe<string, int>(GameEvents.CharacterDied, OnEntityKilled);
             EventManager.Unsubscribe<string>(GameEvents.QuestProgressChanged, OnManualProgress);
 
-            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.EntityKilled, OnConditionEvent);
-            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.ItemObtained, OnConditionEvent);
-            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.Interacted, OnConditionEvent);
-            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.LocationReached, OnConditionEvent);
+            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.EntityKilled, OnEntityKilledCondition);
+            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.ItemObtained, OnItemObtainedCondition);
+            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.Interacted, OnInteractedCondition);
+            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.LocationReached, OnLocationReachedCondition);
+            EventManager.Unsubscribe<ConditionEventData>(QuestEvents.SurviveCompleted, OnSurviveCompletedCondition);
         }
 
         // Legacy event handlers
@@ -159,12 +162,12 @@ namespace ZeroEngine.Quest
             ProcessConditionEvent(QuestEvents.Interacted, new ConditionEventData(targetName, 1));
         }
 
-        // v1.2.0+ condition event handler
-        private void OnConditionEvent(ConditionEventData data)
-        {
-            // Determine event type based on data (simple heuristic)
-            // In practice, the event type is known from the subscription
-        }
+        // v1.2.0+ per-event condition handlers
+        private void OnEntityKilledCondition(ConditionEventData data) => ProcessConditionEvent(QuestEvents.EntityKilled, data);
+        private void OnItemObtainedCondition(ConditionEventData data) => ProcessConditionEvent(QuestEvents.ItemObtained, data);
+        private void OnInteractedCondition(ConditionEventData data) => ProcessConditionEvent(QuestEvents.Interacted, data);
+        private void OnLocationReachedCondition(ConditionEventData data) => ProcessConditionEvent(QuestEvents.LocationReached, data);
+        private void OnSurviveCompletedCondition(ConditionEventData data) => ProcessConditionEvent(QuestEvents.SurviveCompleted, data);
 
         #endregion
 
@@ -542,6 +545,39 @@ namespace ZeroEngine.Quest
         public List<QuestRuntimeData> GetActiveQuests()
         {
             return _saveData.activeQuests;
+        }
+
+        /// <summary>
+        /// 获取指定生命周期的活跃任务 (v1.3.0+)
+        /// </summary>
+        public List<QuestRuntimeData> GetActiveQuests(QuestLifecycle lifecycle)
+        {
+            var result = new List<QuestRuntimeData>();
+            foreach (var quest in _saveData.activeQuests)
+            {
+                var config = GetConfig(quest.questId);
+                if (config != null && config.lifecycle == lifecycle)
+                    result.Add(quest);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 清除所有 PerRun 生命周期的任务 (v1.3.0+)
+        /// </summary>
+        public void ClearPerRunQuests()
+        {
+            for (int i = _saveData.activeQuests.Count - 1; i >= 0; i--)
+            {
+                var quest = _saveData.activeQuests[i];
+                var config = GetConfig(quest.questId);
+                if (config != null && config.lifecycle == QuestLifecycle.PerRun)
+                {
+                    _saveData.activeQuests.RemoveAt(i);
+                    ZeroLog.Info(ZeroLog.Modules.Quest, $"Cleared PerRun quest: {quest.questId}");
+                    EventManager.Trigger(QuestEvents.QuestAbandoned, quest.questId);
+                }
+            }
         }
 
         public QuestSystemSaveData GetSaveData() => _saveData;
