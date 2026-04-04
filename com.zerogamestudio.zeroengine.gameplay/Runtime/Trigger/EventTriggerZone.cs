@@ -44,6 +44,11 @@ namespace ZeroEngine.Trigger
             _triggerCount = 0;
         }
 
+        private void OnDisable()
+        {
+            StopAllCoroutines();
+        }
+
         // --- 2D ---
         private void OnTriggerEnter2D(Collider2D other)
         {
@@ -88,6 +93,7 @@ namespace ZeroEngine.Trigger
         private IEnumerator DelayedExecute(TriggerAction action, GameObject activator)
         {
             yield return new WaitForSeconds(action.Delay);
+            if (activator == null) yield break;
             action.Execute(gameObject, activator);
         }
     }

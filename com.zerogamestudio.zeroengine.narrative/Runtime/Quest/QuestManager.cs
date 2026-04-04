@@ -177,8 +177,6 @@ namespace ZeroEngine.Quest
         /// </summary>
         public void ProcessConditionEvent(string eventType, ConditionEventData data)
         {
-            bool anyChanged = false;
-
             for (int i = 0; i < _saveData.activeQuests.Count; i++)
             {
                 var quest = _saveData.activeQuests[i];
@@ -186,6 +184,8 @@ namespace ZeroEngine.Quest
 
                 var config = GetConfig(quest.questId);
                 if (config == null || !config.UsesNewConditionSystem) continue;
+
+                bool questChanged = false;
 
                 foreach (var condition in config.Conditions)
                 {
@@ -196,7 +196,7 @@ namespace ZeroEngine.Quest
 
                     if (updated)
                     {
-                        anyChanged = true;
+                        questChanged = true;
                         OnConditionProgress?.Invoke(quest.questId, condition);
 
                         if (!wasCompleted && condition.IsSatisfied(quest))
@@ -206,7 +206,7 @@ namespace ZeroEngine.Quest
                     }
                 }
 
-                if (anyChanged)
+                if (questChanged)
                 {
                     CheckCompletionNew(quest, config);
                 }
