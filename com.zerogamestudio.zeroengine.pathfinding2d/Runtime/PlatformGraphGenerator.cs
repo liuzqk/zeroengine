@@ -145,7 +145,8 @@ namespace ZeroEngine.Pathfinding2D
             IsGenerated = true;
             LastGenerateTime = Time.time;
 
-            Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接, 空间索引: {SpatialGrid.GetDebugInfo()}");
+            if (PathfindingLogSettings.EnableGenerationSummary)
+                Debug.Log($"[PlatformGraphGenerator] 生成完成: {Nodes.Count} 节点, {Links.Count} 链接, 空间索引: {SpatialGrid.GetDebugInfo()}");
         }
 
         /// <summary>
@@ -1116,7 +1117,8 @@ namespace ZeroEngine.Pathfinding2D
             }
 
             sb.AppendLine("========== 报告结束 ==========");
-            Debug.Log(sb.ToString());
+            if (PathfindingLogSettings.EnableDetailedDiagnostics)
+                Debug.Log(sb.ToString());
         }
 
         private string LayerMaskToNames(LayerMask mask)

@@ -107,17 +107,25 @@ namespace ZeroEngine.Pathfinding2D
             // 使用 Y 坐标分组（支持 Tilemap Composite Collider 场景，所有平台共享一个 Collider）
             var platformEdgeCache = BuildPlatformEdgeCacheByHeight(nodes);
 
-            // 统计边缘节点数量并输出详细诊断信息
-            Debug.Log($"[JumpLink诊断] 边缘节点列表:");
+            // 统计边缘节点数量
             foreach (var node in nodes)
             {
                 if (node.NodeType == PlatformNodeType.LeftEdge || node.NodeType == PlatformNodeType.RightEdge)
-                {
                     edgeNodeCount++;
-                    Debug.Log($"  - {node.NodeType} at {node.Position} (NodeId={node.NodeId}, OneWay={node.IsOneWay})");
+            }
+
+            if (PathfindingLogSettings.EnableDetailedDiagnostics)
+            {
+                Debug.Log($"[JumpLink诊断] 边缘节点列表:");
+                foreach (var node in nodes)
+                {
+                    if (node.NodeType == PlatformNodeType.LeftEdge || node.NodeType == PlatformNodeType.RightEdge)
+                        Debug.Log($"  - {node.NodeType} at {node.Position} (NodeId={node.NodeId}, OneWay={node.IsOneWay})");
                 }
             }
-            Debug.Log($"[JumpLinkCalculator] 节点统计: 总数={nodes.Count}, 边缘节点={edgeNodeCount}, 平台数(按高度)={platformEdgeCache.Count}");
+
+            if (PathfindingLogSettings.EnableGenerationSummary)
+                Debug.Log($"[JumpLinkCalculator] 节点统计: 总数={nodes.Count}, 边缘节点={edgeNodeCount}, 平台数(按高度)={platformEdgeCache.Count}");
 
             // 遍历所有节点（跳跃链接仅从边缘节点发起，下落链接根据节点类型区分处理）
             for (int i = 0; i < nodes.Count; i++)
@@ -186,7 +194,7 @@ namespace ZeroEngine.Pathfinding2D
                                 {
                                     jumpFailedTrajectory++;
                                     // 诊断日志：同一 Collider 但轨迹被阻挡
-                                    if (fromNode.PlatformCollider == toNode.PlatformCollider)
+                                    if (PathfindingLogSettings.EnableDetailedDiagnostics && fromNode.PlatformCollider == toNode.PlatformCollider)
                                     {
                                         Debug.Log($"[JumpLink诊断] 同Collider轨迹阻挡: {fromNode.Position} -> {toNode.Position}, 高度差={verticalDist:F2}");
                                     }
@@ -254,16 +262,25 @@ namespace ZeroEngine.Pathfinding2D
                 }
             }
 
-            Debug.Log($"[JumpLinkCalculator] 链接生成完成: 跳跃 {jumpLinksCreated}, 下落 {fallLinksCreated}, 穿透 {dropLinksCreated}");
-            Debug.Log($"[JumpLinkCalculator] 跳跃诊断: 尝试={jumpAttempts}, 成功={jumpLinksCreated}, " +
-                      $"超距离={jumpFailedDistance}, 超高度={jumpFailedHeight}, 不可达={jumpFailedReachable}, 轨迹阻挡={jumpFailedTrajectory}");
-            Debug.Log($"[JumpLinkCalculator] 过滤诊断: 起点非边缘={jumpSkippedNotEdge}, 终点非边缘(跳)={jumpSkippedToNotEdge}, 终点非边缘(落)={fallSkippedToNotEdge}");
-            Debug.Log($"[JumpLinkCalculator] 配置: MaxJumpHeight={config.MaxJumpHeight}, MaxHorizontalDistance={config.MaxHorizontalDistance}, " +
-                      $"MaxJumpVelocity={config.MaxJumpVelocity}, ObstacleLayer={obstacleLayer.value}");
+            if (PathfindingLogSettings.EnableGenerationSummary)
+            {
+                Debug.Log($"[JumpLinkCalculator] 链接生成完成: 跳跃 {jumpLinksCreated}, 下落 {fallLinksCreated}, 穿透 {dropLinksCreated}");
+            }
+
+            if (PathfindingLogSettings.EnableDetailedDiagnostics)
+            {
+                Debug.Log($"[JumpLinkCalculator] 跳跃诊断: 尝试={jumpAttempts}, 成功={jumpLinksCreated}, " +
+                          $"超距离={jumpFailedDistance}, 超高度={jumpFailedHeight}, 不可达={jumpFailedReachable}, 轨迹阻挡={jumpFailedTrajectory}");
+                Debug.Log($"[JumpLinkCalculator] 过滤诊断: 起点非边缘={jumpSkippedNotEdge}, 终点非边缘(跳)={jumpSkippedToNotEdge}, 终点非边缘(落)={fallSkippedToNotEdge}");
+                Debug.Log($"[JumpLinkCalculator] 配置: MaxJumpHeight={config.MaxJumpHeight}, MaxHorizontalDistance={config.MaxHorizontalDistance}, " +
+                          $"MaxJumpVelocity={config.MaxJumpVelocity}, ObstacleLayer={obstacleLayer.value}");
+            }
 
             // 构建邻接表，优化 A* 寻路性能（O(n) -> O(1)）
             graphGenerator.BuildAdjacencyList();
-            Debug.Log($"[JumpLinkCalculator] 邻接表构建完成，共 {graphGenerator.AdjacencyList.Count} 个节点");
+
+            if (PathfindingLogSettings.EnableGenerationSummary)
+                Debug.Log($"[JumpLinkCalculator] 邻接表构建完成，共 {graphGenerator.AdjacencyList.Count} 个节点");
         }
 
         /// <summary>
