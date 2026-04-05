@@ -205,7 +205,6 @@ namespace ZeroEngine.Pathfinding2D
             return ((long)x << 32) | ((long)y & 0xFFFFFFFFL);
         }
 
-#if UNITY_EDITOR
         /// <summary>
         /// 获取调试信息
         /// </summary>
@@ -231,6 +230,5 @@ namespace ZeroEngine.Pathfinding2D
             return $"SpatialGrid2D: {cellCount} cells, {totalNodes} nodes, " +
                    $"max {maxNodesInCell}/cell, avg {avgNodesPerCell:F1}/cell";
         }
-#endif
     }
 }
