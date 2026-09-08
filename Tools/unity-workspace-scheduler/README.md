@@ -116,6 +116,14 @@ replaces it. Named resources conflict even between claims from the same task, so
 accidentally dispatch two concurrent executors against `unity-live`. Non-conflicting resources and
 paths remain independently schedulable.
 
+Version 1.4.3 prevents an active freeze owner from waiting behind work blocked by
+that same freeze. While the freeze is active, foreign queued claims remain in
+place but do not become FIFO barriers to its owner's admitted work. Once the
+freeze is released, their original queue order and priority apply again. Active
+resource conflicts, same-task resource exclusion, drain/restoration admission
+guards, finite wait deadlines and outcome-unknown fences remain unchanged.
+This changes neither protocol version 3 nor state schema 3 and needs no data migration.
+
 Within one workspace, an open task token hash is unique. Authentication selects
 an open task before any historical terminal task and falls back to history only
 when no open match exists; multiple open matches are corrupt state and fail
