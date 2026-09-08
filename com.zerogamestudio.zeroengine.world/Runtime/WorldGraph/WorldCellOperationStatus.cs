@@ -2,8 +2,9 @@ namespace ZeroEngine.World.WorldGraph
 {
     public enum WorldCellOperationStatus
     {
-        Succeeded,
-        Failed,
-        Cancelled
+        Unknown = -1,
+        Succeeded = 0,
+        Failed = 1,
+        Cancelled = 2
     }
 }

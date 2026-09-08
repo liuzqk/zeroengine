@@ -73,6 +73,7 @@ namespace ZeroEngine.World.Editor.WorldGraph
             ValidateLayerRoots(profile, cell, sceneText, scenePath, issues);
             ValidateAnchors(cell, sceneText, scenePath, issues);
             ValidateTravelPortals(profile, cell, sceneText, scenePath, issues);
+            ValidateSeamlessInteriorGates(profile, cell, sceneText, scenePath, issues);
             ValidateStreamingBoundaries(profile, cell, sceneText, scenePath, issues);
             ValidateGeometryBinding(profile, sceneText, scenePath, cell.CellId, issues);
         }
@@ -142,7 +143,12 @@ namespace ZeroEngine.World.Editor.WorldGraph
             }
 
             var anchors = new HashSet<string>(cell.Anchors.Where(anchor => anchor != null).Select(anchor => anchor.AnchorId));
-            foreach (var link in profile.Graph.TravelLinks.Where(link => link != null && ShouldCreateSceneTravelPortal(link.TravelMode)))
+            var hasSeamlessInteriorGateContract = profile.GetSeamlessInteriorGateName != null;
+            foreach (var link in profile.Graph.TravelLinks.Where(
+                         link => link != null
+                                 && ShouldCreateSceneTravelPortal(
+                                     link.TravelMode,
+                                     hasSeamlessInteriorGateContract)))
             {
                 if (anchors.Contains(link.FromAnchorId))
                 {
@@ -168,6 +174,93 @@ namespace ZeroEngine.World.Editor.WorldGraph
                         issues);
                 }
             }
+        }
+
+        private static void ValidateSeamlessInteriorGates(
+            WorldGraphGraduationProfile profile,
+            WorldCellDefinition cell,
+            string sceneText,
+            string scenePath,
+            ICollection<AreaAuthoringIssue> issues)
+        {
+            if (profile.GetSeamlessInteriorGateName == null)
+            {
+                return;
+            }
+
+            var anchors = new HashSet<string>(
+                cell.Anchors.Where(anchor => anchor != null).Select(anchor => anchor.AnchorId));
+            foreach (var link in profile.Graph.TravelLinks.Where(
+                         link => link != null
+                                 && link.TravelMode == WorldTravelMode.SeamlessInterior))
+            {
+                ValidateSeamlessInteriorGateDirection(
+                    profile,
+                    cell,
+                    anchors,
+                    link,
+                    link.FromAnchorId,
+                    link.ToAnchorId,
+                    sceneText,
+                    scenePath,
+                    issues);
+                if (link.Bidirectional)
+                {
+                    ValidateSeamlessInteriorGateDirection(
+                        profile,
+                        cell,
+                        anchors,
+                        link,
+                        link.ToAnchorId,
+                        link.FromAnchorId,
+                        sceneText,
+                        scenePath,
+                        issues);
+                }
+            }
+        }
+
+        private static void ValidateSeamlessInteriorGateDirection(
+            WorldGraphGraduationProfile profile,
+            WorldCellDefinition sourceCell,
+            ISet<string> sourceAnchors,
+            WorldTravelLinkDefinition link,
+            string sourceAnchorId,
+            string targetAnchorId,
+            string sceneText,
+            string scenePath,
+            ICollection<AreaAuthoringIssue> issues)
+        {
+            if (!sourceAnchors.Contains(sourceAnchorId))
+            {
+                return;
+            }
+
+            if (!WorldGraphGraduationRunner.TryFindCellContainingAnchor(
+                    profile.Graph,
+                    targetAnchorId,
+                    out var targetCell)
+                || !TryFindStreamingBoundaryId(
+                    sourceCell,
+                    targetCell.CellId,
+                    out var boundaryId))
+            {
+                issues.Add(WorldGraphGraduationRunner.Error(
+                    "WORLD_SCENE_SEAMLESS_INTERIOR_BOUNDARY_MISSING",
+                    $"World cell scene cannot resolve a seamless interior boundary for link {link.LinkId}.",
+                    scenePath,
+                    link.LinkId));
+                return;
+            }
+
+            ValidateNamedObject(
+                sceneText,
+                profile.GetSeamlessInteriorGateName(boundaryId, sourceAnchorId),
+                "WORLD_SCENE_SEAMLESS_INTERIOR_GATE_MISSING",
+                $"World cell scene seamless interior gate is missing for link {link.LinkId}.",
+                scenePath,
+                link.LinkId,
+                issues);
         }
 
         private static void ValidateStreamingBoundaries(
@@ -266,10 +359,13 @@ namespace ZeroEngine.World.Editor.WorldGraph
                    && GetNameMarkers(objectName).Any(sceneText.Contains);
         }
 
-        private static bool ShouldCreateSceneTravelPortal(WorldTravelMode travelMode)
+        private static bool ShouldCreateSceneTravelPortal(
+            WorldTravelMode travelMode,
+            bool hasSeamlessInteriorGateContract)
         {
-            return travelMode == WorldTravelMode.SeamlessInterior
-                   || travelMode == WorldTravelMode.PortalTransition;
+            return travelMode == WorldTravelMode.PortalTransition
+                   || (travelMode == WorldTravelMode.SeamlessInterior
+                       && !hasSeamlessInteriorGateContract);
         }
 
         private static bool TryFindStreamingBoundaryId(

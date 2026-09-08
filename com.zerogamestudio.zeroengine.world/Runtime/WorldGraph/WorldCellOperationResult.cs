@@ -2,21 +2,27 @@ namespace ZeroEngine.World.WorldGraph
 {
     public enum WorldCellReadinessStatus
     {
-        Succeeded,
-        Failed,
-        Cancelled
+        Unknown = -1,
+        Succeeded = 0,
+        Failed = 1,
+        Cancelled = 2
     }
 
     public readonly struct WorldCellOperationResult
     {
+        private readonly WorldCellOperationStatus _status;
+        private readonly bool _initialized;
+
         private WorldCellOperationResult(WorldCellOperationStatus status, string cellId, string message)
         {
-            Status = status;
+            _status = status;
+            _initialized = true;
             CellId = cellId;
             Message = message;
         }
 
-        public WorldCellOperationStatus Status { get; }
+        // 保留已发布枚举数值，同时禁止默认 struct 被误判为成功。
+        public WorldCellOperationStatus Status => _initialized ? _status : WorldCellOperationStatus.Unknown;
         public string CellId { get; }
         public string Message { get; }
         public bool IsSuccess => Status == WorldCellOperationStatus.Succeeded;
@@ -39,17 +45,21 @@ namespace ZeroEngine.World.WorldGraph
 
     public readonly struct WorldCellReadinessResult
     {
+        private readonly WorldCellReadinessStatus _status;
+        private readonly bool _initialized;
+
         public WorldCellReadinessResult(
             WorldCellReadinessStatus status,
             string cellId,
             string message = null)
         {
-            Status = status;
+            _status = status;
+            _initialized = true;
             CellId = cellId;
             Message = message;
         }
 
-        public WorldCellReadinessStatus Status { get; }
+        public WorldCellReadinessStatus Status => _initialized ? _status : WorldCellReadinessStatus.Unknown;
         public string CellId { get; }
         public string Message { get; }
         public bool IsSuccess => Status == WorldCellReadinessStatus.Succeeded;

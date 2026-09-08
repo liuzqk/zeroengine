@@ -28,7 +28,8 @@ namespace ZeroEngine.World.Editor.WorldGraph
             string navigationSourceId,
             bool requireStrictNavigationSceneBinding,
             WorldGraphConnectionNetworkSO connectionNetwork = null,
-            IReadOnlyDictionary<string, WorldGraphSO> connectedGraphsById = null)
+            IReadOnlyDictionary<string, WorldGraphSO> connectedGraphsById = null,
+            Func<string, string, string> getSeamlessInteriorGateName = null)
         {
             Graph = graph;
             GraphAssetPath = graphAssetPath;
@@ -51,6 +52,7 @@ namespace ZeroEngine.World.Editor.WorldGraph
             RequireStrictNavigationSceneBinding = requireStrictNavigationSceneBinding;
             ConnectionNetwork = connectionNetwork;
             ConnectedGraphsById = connectedGraphsById ?? new Dictionary<string, WorldGraphSO>();
+            GetSeamlessInteriorGateName = getSeamlessInteriorGateName;
         }
 
         public WorldGraphSO Graph { get; }
@@ -74,6 +76,7 @@ namespace ZeroEngine.World.Editor.WorldGraph
         public bool RequireStrictNavigationSceneBinding { get; }
         public WorldGraphConnectionNetworkSO ConnectionNetwork { get; }
         public IReadOnlyDictionary<string, WorldGraphSO> ConnectedGraphsById { get; }
+        public Func<string, string, string> GetSeamlessInteriorGateName { get; }
     }
 
     public readonly struct WorldAddressablesGroupContract

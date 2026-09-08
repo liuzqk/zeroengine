@@ -45,6 +45,178 @@ namespace ZeroEngine.World.WorldGraph
 
         public WorldGraphRuntimeSnapshot Snapshot => _snapshot;
 
+        public IDisposable AcquireCellResidency(string cellId, string reason)
+        {
+            var normalizedCellId = cellId?.Trim();
+            if (string.IsNullOrEmpty(normalizedCellId))
+            {
+                throw new ArgumentException("A world cell ID is required.", nameof(cellId));
+            }
+
+            if (_graph?.FindCell(normalizedCellId) == null)
+            {
+                throw new ArgumentException(
+                    $"World cell '{normalizedCellId}' is not part of the active graph.",
+                    nameof(cellId));
+            }
+
+            if (_streaming == null
+                || _operationInProgress
+                || !string.Equals(_snapshot.RuntimeState, "Exploring", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "World cell residency can only be acquired while the runtime session is stably exploring.");
+            }
+
+            var handle = _streaming.AcquireCellPin(normalizedCellId, reason?.Trim());
+            PublishSnapshot(_snapshot.RuntimeState);
+            return new RuntimeSessionResidencyLease(this, handle);
+        }
+
+        public async Task<WorldGraphRuntimeSessionResult> EnsureCellLoadedAsync(
+            string sourceCellId,
+            string targetCellId,
+            string boundaryId,
+            CancellationToken cancellationToken)
+        {
+            if (!TryBeginWorldOperation())
+            {
+                return OperationBusyResult(cancellationToken);
+            }
+
+            try
+            {
+                if (_graph == null || _streaming == null)
+                {
+                    return Result(WorldGraphRuntimeSessionStatus.NotLoaded);
+                }
+
+                if (!string.Equals(_snapshot.RuntimeState, "Exploring", StringComparison.Ordinal))
+                {
+                    return Result(WorldGraphRuntimeSessionStatus.Busy);
+                }
+
+                var normalizedSourceCellId = sourceCellId?.Trim();
+                var normalizedTargetCellId = targetCellId?.Trim();
+                var normalizedBoundaryId = boundaryId?.Trim();
+
+                if (!string.Equals(
+                        _streaming.ActiveCellId,
+                        normalizedSourceCellId,
+                        StringComparison.Ordinal))
+                {
+                    PublishSnapshot("Exploring", WorldGraphRuntimeSessionStatus.ActiveCellMismatch.ToString());
+                    return Result(WorldGraphRuntimeSessionStatus.ActiveCellMismatch);
+                }
+
+                if (!IsAuthorizedStreamingBoundary(
+                        normalizedSourceCellId,
+                        normalizedTargetCellId,
+                        normalizedBoundaryId))
+                {
+                    PublishSnapshot("Exploring", WorldGraphRuntimeSessionStatus.StreamingBoundaryMissing.ToString());
+                    return Result(WorldGraphRuntimeSessionStatus.StreamingBoundaryMissing);
+                }
+
+                var targetCell = _graph.FindCell(normalizedTargetCellId);
+                if (targetCell == null)
+                {
+                    PublishSnapshot("Exploring", WorldGraphRuntimeSessionStatus.TargetCellMissing.ToString());
+                    return Result(WorldGraphRuntimeSessionStatus.TargetCellMissing);
+                }
+
+                PublishSnapshot("StreamingPreparing");
+                var streamingResult = await _streaming.EnsureCellLoadedAsync(
+                    targetCell.CellId,
+                    targetCell.Layers,
+                    _options.LoadBoundaryCells,
+                    cancellationToken);
+                SyncNavigationReadyCells(_streaming.LoadedCellIds);
+
+                if (!streamingResult.Succeeded)
+                {
+                    PublishSnapshot("Exploring", $"{streamingResult.Status}: {streamingResult.Message}");
+                    return Result(MapStreamingStatus(streamingResult.Status), streamingResult);
+                }
+
+                PublishSnapshot("Exploring");
+                return Result(WorldGraphRuntimeSessionStatus.Loaded, streamingResult);
+            }
+            catch (OperationCanceledException)
+            {
+                SyncNavigationReadyCells(_streaming?.LoadedCellIds);
+                PublishSnapshot("Exploring", WorldGraphRuntimeSessionStatus.Cancelled.ToString());
+                return Result(WorldGraphRuntimeSessionStatus.Cancelled);
+            }
+            catch (Exception ex)
+            {
+                SyncNavigationReadyCells(_streaming?.LoadedCellIds);
+                PublishSnapshot("Exploring", ex.Message);
+                return Result(WorldGraphRuntimeSessionStatus.Failed, exception: ex);
+            }
+            finally
+            {
+                EndWorldOperation();
+            }
+        }
+
+        /// <summary>
+        /// Unloads eligible cells outside the current active window without loading cells,
+        /// moving the actor, or changing the active cell.
+        /// </summary>
+        public async Task<WorldGraphRuntimeSessionResult> ReconcileActiveWindowAsync(
+            CancellationToken cancellationToken)
+        {
+            if (!TryBeginWorldOperation())
+            {
+                return OperationBusyResult(cancellationToken);
+            }
+
+            try
+            {
+                if (_graph == null || _streaming == null)
+                {
+                    return Result(WorldGraphRuntimeSessionStatus.NotLoaded);
+                }
+
+                if (!string.Equals(_snapshot.RuntimeState, "Exploring", StringComparison.Ordinal))
+                {
+                    return Result(WorldGraphRuntimeSessionStatus.Busy);
+                }
+
+                PublishSnapshot("StreamingReconciling");
+                var streamingResult = await _streaming.ReconcileActiveWindowAsync(
+                    _options.LoadBoundaryCells,
+                    cancellationToken);
+                SyncNavigationReadyCells(_streaming.LoadedCellIds);
+
+                if (!streamingResult.Succeeded)
+                {
+                    PublishSnapshot("Exploring", $"{streamingResult.Status}: {streamingResult.Message}");
+                    return Result(MapStreamingStatus(streamingResult.Status), streamingResult);
+                }
+
+                PublishSnapshot("Exploring");
+                return Result(WorldGraphRuntimeSessionStatus.Loaded, streamingResult);
+            }
+            catch (OperationCanceledException)
+            {
+                SyncNavigationReadyCells(_streaming?.LoadedCellIds);
+                PublishSnapshot("Exploring", WorldGraphRuntimeSessionStatus.Cancelled.ToString());
+                return Result(WorldGraphRuntimeSessionStatus.Cancelled);
+            }
+            catch (Exception ex)
+            {
+                SyncNavigationReadyCells(_streaming?.LoadedCellIds);
+                PublishSnapshot("Exploring", ex.Message);
+                return Result(WorldGraphRuntimeSessionStatus.Failed, exception: ex);
+            }
+            finally
+            {
+                EndWorldOperation();
+            }
+        }
+
         public async Task<WorldGraphRuntimeSessionResult> LoadStartAsync(CancellationToken cancellationToken)
         {
             if (!TryBeginWorldOperation())
@@ -721,6 +893,12 @@ namespace ZeroEngine.World.WorldGraph
                 _lastFailure);
         }
 
+        private void ReleaseCellResidency(IDisposable handle)
+        {
+            handle?.Dispose();
+            PublishSnapshot(_snapshot.RuntimeState);
+        }
+
         private IReadOnlyList<string> BuildPinnedCellSummaries(IReadOnlyList<string> loadedCellIds)
         {
             if (_streaming == null || loadedCellIds == null || loadedCellIds.Count == 0)
@@ -827,6 +1005,34 @@ namespace ZeroEngine.World.WorldGraph
                 travelResult,
                 location,
                 exception);
+        }
+
+        private sealed class RuntimeSessionResidencyLease : IDisposable
+        {
+            private WorldGraphRuntimeSession _session;
+            private IDisposable _handle;
+
+            public RuntimeSessionResidencyLease(
+                WorldGraphRuntimeSession session,
+                IDisposable handle)
+            {
+                _session = session;
+                _handle = handle;
+            }
+
+            public void Dispose()
+            {
+                var session = _session;
+                if (session == null)
+                {
+                    return;
+                }
+
+                var handle = _handle;
+                _session = null;
+                _handle = null;
+                session.ReleaseCellResidency(handle);
+            }
         }
     }
 }

@@ -14,6 +14,8 @@ namespace ZeroEngine.World.WorldGraph
             new Dictionary<string, Dictionary<int, string>>();
         private readonly Dictionary<string, DateTimeOffset> _loadedAtUtcByCell =
             new Dictionary<string, DateTimeOffset>();
+        private readonly Dictionary<string, WorldCellLayer> _loadedLayersByCell =
+            new Dictionary<string, WorldCellLayer>();
         private readonly List<string> _loadedCellIds = new List<string>();
         private readonly int _maxLoadedBudgetWeight;
         private readonly TimeSpan _minimumCellResidency;
@@ -152,7 +154,10 @@ namespace ZeroEngine.World.WorldGraph
                     var requestedLayers = string.Equals(cell.CellId, cellId, StringComparison.Ordinal)
                         ? layers
                         : cell.Layers;
-                    var loadResult = await EnsureCellLoadedInternalAsync(cell.CellId, requestedLayers, cancellationToken);
+                    var loadResult = await EnsureCellLoadedInternalAsync(
+                        cell.CellId,
+                        requestedLayers,
+                        cancellationToken: cancellationToken);
                     if (!loadResult.Succeeded)
                     {
                         await RollbackNewlyLoadedCellsAsync(newlyLoadedCellIds);
@@ -187,9 +192,22 @@ namespace ZeroEngine.World.WorldGraph
             }
         }
 
+        public Task<WorldStreamingResult> EnsureCellLoadedAsync(
+            string cellId,
+            WorldCellLayer layers,
+            CancellationToken cancellationToken)
+        {
+            return EnsureCellLoadedAsync(
+                cellId,
+                layers,
+                loadBoundaryCells: false,
+                cancellationToken: cancellationToken);
+        }
+
         public async Task<WorldStreamingResult> EnsureCellLoadedAsync(
             string cellId,
             WorldCellLayer layers,
+            bool loadBoundaryCells,
             CancellationToken cancellationToken)
         {
             if (_operationInProgress)
@@ -200,7 +218,94 @@ namespace ZeroEngine.World.WorldGraph
             _operationInProgress = true;
             try
             {
-                return await EnsureCellLoadedInternalAsync(cellId, layers, cancellationToken);
+                var windowResult = BuildRequiredWindow(cellId, loadBoundaryCells, out var requiredCells);
+                if (!windowResult.Succeeded)
+                {
+                    return windowResult;
+                }
+
+                if (!FitsPreparationBudget(requiredCells))
+                {
+                    return Result(
+                        WorldStreamingResultStatus.BudgetExceeded,
+                        $"Preparing world cell window for '{cellId}' alongside the current loaded cells exceeds loaded budget {_maxLoadedBudgetWeight}.");
+                }
+
+                var loadedBefore = new HashSet<string>(_loadedCellSet);
+                var newlyLoadedCellIds = new List<string>();
+                foreach (var cell in requiredCells)
+                {
+                    var requestedLayers = string.Equals(cell.CellId, cellId, StringComparison.Ordinal)
+                        ? layers
+                        : cell.Layers;
+                    var loadResult = await EnsureCellLoadedInternalAsync(
+                        cell.CellId,
+                        requestedLayers,
+                        cancellationToken: cancellationToken);
+                    if (!loadResult.Succeeded)
+                    {
+                        await RollbackNewlyLoadedCellsAsync(newlyLoadedCellIds);
+                        return loadResult;
+                    }
+
+                    if (!loadedBefore.Contains(cell.CellId))
+                    {
+                        newlyLoadedCellIds.Add(cell.CellId);
+                    }
+                }
+
+                return Result(WorldStreamingResultStatus.Succeeded);
+            }
+            finally
+            {
+                _operationInProgress = false;
+            }
+        }
+
+        /// <summary>
+        /// Unloads eligible loaded cells outside the current active window without loading cells
+        /// or changing the active cell.
+        /// </summary>
+        public async Task<WorldStreamingResult> ReconcileActiveWindowAsync(
+            bool loadBoundaryCells,
+            CancellationToken cancellationToken)
+        {
+            if (_operationInProgress)
+            {
+                return Result(WorldStreamingResultStatus.Busy, "A world streaming operation is already in progress.");
+            }
+
+            _operationInProgress = true;
+            try
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return Result(WorldStreamingResultStatus.Cancelled, "World cell reconciliation was cancelled.");
+                }
+
+                if (string.IsNullOrWhiteSpace(ActiveCellId))
+                {
+                    return Result(
+                        WorldStreamingResultStatus.CellNotFound,
+                        "World streaming has no active cell to reconcile.");
+                }
+
+                var windowResult = BuildRequiredWindow(
+                    ActiveCellId,
+                    loadBoundaryCells,
+                    out var requiredCells);
+                if (!windowResult.Succeeded)
+                {
+                    return windowResult;
+                }
+
+                var requiredCellIds = new HashSet<string>();
+                foreach (var cell in requiredCells)
+                {
+                    requiredCellIds.Add(cell.CellId);
+                }
+
+                return await UnloadCellsOutsideWindowAsync(requiredCellIds, cancellationToken);
             }
             finally
             {
@@ -228,50 +333,85 @@ namespace ZeroEngine.World.WorldGraph
                 return Result(WorldStreamingResultStatus.Cancelled, "World cell load was cancelled.");
             }
 
-            if (IsCellLoaded(cellId))
-            {
-                return Result(WorldStreamingResultStatus.Succeeded);
-            }
-
             var cell = _graph.FindCell(cellId);
             if (cell == null)
             {
                 return Result(WorldStreamingResultStatus.CellNotFound, $"World cell '{cellId}' was not found.");
             }
 
+            var resolvedLayers = ResolveLayerMask(cell, layers);
+            if (IsCellLoaded(cellId))
+            {
+                if (_loadedLayersByCell.TryGetValue(cellId, out var loadedLayers)
+                    && loadedLayers == resolvedLayers)
+                {
+                    return Result(WorldStreamingResultStatus.Succeeded);
+                }
+
+                return Result(
+                    WorldStreamingResultStatus.LayerMismatch,
+                    $"World cell '{cellId}' is already loaded with layers '{loadedLayers}' and cannot satisfy requested layers '{resolvedLayers}' without an explicit reload.");
+            }
+
             try
             {
-                var resolvedLayers = ResolveLayerMask(cell, layers);
                 var operation = await _loader.LoadCellAsync(cell, resolvedLayers, cancellationToken);
                 if (operation.Status == WorldCellOperationStatus.Cancelled)
                 {
-                    return Result(WorldStreamingResultStatus.Cancelled, operation.Message);
+                    return await RollbackUncommittedCellAsync(
+                        cell,
+                        WorldStreamingResultStatus.Cancelled,
+                        operation.Message);
                 }
 
                 if (!operation.IsSuccess)
                 {
-                    return Result(WorldStreamingResultStatus.LoaderFailed, operation.Message);
+                    return await RollbackUncommittedCellAsync(
+                        cell,
+                        WorldStreamingResultStatus.LoaderFailed,
+                        operation.Message);
                 }
 
                 var readinessResult = await PrepareCellReadinessAsync(cell, resolvedLayers, cancellationToken);
                 if (!readinessResult.IsSuccess)
                 {
-                    await TryUnloadCellAfterReadinessFailureAsync(cell);
-                    return readinessResult.Status == WorldCellReadinessStatus.Cancelled
-                        ? Result(WorldStreamingResultStatus.Cancelled, readinessResult.Message)
-                        : Result(WorldStreamingResultStatus.ReadinessFailed, readinessResult.Message);
+                    var failureStatus = readinessResult.Status == WorldCellReadinessStatus.Cancelled
+                        ? WorldStreamingResultStatus.Cancelled
+                        : WorldStreamingResultStatus.ReadinessFailed;
+                    return await RollbackUncommittedCellAsync(
+                        cell,
+                        failureStatus,
+                        readinessResult.Message);
+                }
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return await RollbackUncommittedCellAsync(
+                        cell,
+                        WorldStreamingResultStatus.Cancelled,
+                        "World cell load was cancelled after readiness completed.");
                 }
             }
             catch (OperationCanceledException)
             {
-                await TryUnloadCellAfterReadinessFailureAsync(cell);
-                return Result(WorldStreamingResultStatus.Cancelled, "World cell load was cancelled.");
+                return await RollbackUncommittedCellAsync(
+                    cell,
+                    WorldStreamingResultStatus.Cancelled,
+                    "World cell load was cancelled.");
+            }
+            catch (Exception ex)
+            {
+                return await RollbackUncommittedCellAsync(
+                    cell,
+                    WorldStreamingResultStatus.LoaderFailed,
+                    ex.Message);
             }
 
             if (_loadedCellSet.Add(cellId))
             {
                 _loadedCellIds.Add(cellId);
                 _loadedAtUtcByCell[cellId] = UtcNow();
+                _loadedLayersByCell[cellId] = resolvedLayers;
             }
 
             return Result(WorldStreamingResultStatus.Succeeded);
@@ -306,20 +446,45 @@ namespace ZeroEngine.World.WorldGraph
             }
         }
 
-        private async Task TryUnloadCellAfterReadinessFailureAsync(WorldCellDefinition cell)
+        private async Task<WorldStreamingResult> RollbackUncommittedCellAsync(
+            WorldCellDefinition cell,
+            WorldStreamingResultStatus failureStatus,
+            string failureMessage)
+        {
+            var rollbackResult = await TryRollbackCellLoadAsync(cell);
+            if (rollbackResult.IsSuccess)
+            {
+                return Result(failureStatus, failureMessage);
+            }
+
+            var rollbackMessage = string.IsNullOrWhiteSpace(rollbackResult.Message)
+                ? "The loader did not release the unready world cell."
+                : rollbackResult.Message;
+            var primaryMessage = string.IsNullOrWhiteSpace(failureMessage)
+                ? failureStatus.ToString()
+                : failureMessage;
+            return Result(
+                WorldStreamingResultStatus.RollbackFailed,
+                $"{primaryMessage} Rollback failed for world cell '{cell?.CellId}': {rollbackMessage}");
+        }
+
+        private async Task<WorldCellOperationResult> TryRollbackCellLoadAsync(
+            WorldCellDefinition cell)
         {
             if (_loader == null || cell == null)
             {
-                return;
+                return WorldCellOperationResult.Failed(
+                    cell?.CellId,
+                    "World cell rollback requires a loader and cell definition.");
             }
 
             try
             {
-                await _loader.UnloadCellAsync(cell, CancellationToken.None);
+                return await _loader.UnloadCellAsync(cell, CancellationToken.None);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Keep the original readiness failure as the reported cause.
+                return WorldCellOperationResult.Failed(cell.CellId, ex.Message);
             }
         }
 
@@ -556,6 +721,43 @@ namespace ZeroEngine.World.WorldGraph
             return true;
         }
 
+        private bool FitsPreparationBudget(IReadOnlyList<WorldCellDefinition> requiredCells)
+        {
+            var retainedCellIds = new HashSet<string>();
+            long totalBudget = 0;
+            foreach (var loadedCellId in _loadedCellIds)
+            {
+                var loadedCell = _graph.FindCell(loadedCellId);
+                if (loadedCell == null)
+                {
+                    return false;
+                }
+
+                if (retainedCellIds.Add(loadedCellId))
+                {
+                    totalBudget += Math.Max(1, loadedCell.BudgetWeight);
+                    if (totalBudget > _maxLoadedBudgetWeight)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            foreach (var requiredCell in requiredCells)
+            {
+                if (retainedCellIds.Add(requiredCell.CellId))
+                {
+                    totalBudget += Math.Max(1, requiredCell.BudgetWeight);
+                    if (totalBudget > _maxLoadedBudgetWeight)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return totalBudget <= _maxLoadedBudgetWeight;
+        }
+
         private bool FitsLoadedBudgetWithProtectedResidents(IReadOnlyList<WorldCellDefinition> requiredCells)
         {
             var retainedCellIds = new HashSet<string>();
@@ -631,6 +833,7 @@ namespace ZeroEngine.World.WorldGraph
             _loadedCellSet.Remove(cellId);
             _loadedCellIds.Remove(cellId);
             _loadedAtUtcByCell.Remove(cellId);
+            _loadedLayersByCell.Remove(cellId);
             if (ActiveCellId == cellId)
             {
                 ActiveCellId = null;
