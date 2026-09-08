@@ -206,6 +206,63 @@ def test_freeze_is_fair_barrier(scheduler: WorkspaceCoordinator, workspace: Path
     assert promoted["state"] == "active"
 
 
+@pytest.mark.parametrize("scope", ["resources", "writes"])
+def test_active_freeze_owner_progresses_past_its_blocked_waiters(
+    scheduler: WorkspaceCoordinator, workspace: Path, scope: str
+) -> None:
+    _, owner_token = start(scheduler, workspace, "maintenance")
+    _, first_token = start(scheduler, workspace, "first-waiter")
+    _, second_token = start(scheduler, workspace, "second-waiter")
+    scopes = {scope: ("unity-live" if scope == "resources" else "Assets/Maintenance.cs",)}
+    freeze = scheduler.acquire_claim(workspace, owner_token, freeze=True)
+    first = scheduler.acquire_claim(workspace, first_token, **scopes)
+    second = scheduler.acquire_claim(workspace, second_token, **scopes)
+    before = {claim["id"]: claim for claim in scheduler.status(workspace)["claims"]}
+    assert before[first["id"]]["state"] == before[second["id"]]["state"] == "queued"
+    original_order = [before[first["id"]]["queue_order"], before[second["id"]]["queue_order"]]
+    assert original_order[0] < original_order[1]
+
+    owned = scheduler.acquire_claim(workspace, owner_token, **scopes)
+    assert owned["state"] == "active"
+    during = {claim["id"]: claim for claim in scheduler.status(workspace)["claims"]}
+    assert during[freeze["id"]]["state"] == "active"
+    assert during[first["id"]]["state"] == during[second["id"]]["state"] == "queued"
+    assert [
+        during[first["id"]]["queue_order"],
+        during[second["id"]]["queue_order"],
+    ] == original_order
+
+    scheduler.release_claim(workspace, owner_token, str(owned["id"]))
+    still_frozen = {claim["id"]: claim for claim in scheduler.status(workspace)["claims"]}
+    assert still_frozen[first["id"]]["state"] == "queued"
+    scheduler.release_claim(workspace, owner_token, str(freeze["id"]))
+    resumed = {claim["id"]: claim for claim in scheduler.status(workspace)["claims"]}
+    assert resumed[first["id"]]["state"] == "active"
+    assert resumed[second["id"]]["state"] == "queued"
+    scheduler.release_claim(workspace, first_token, str(first["id"]))
+    last = {claim["id"]: claim for claim in scheduler.status(workspace)["claims"]}
+    assert last[second["id"]]["state"] == "active"
+
+
+def test_active_freeze_owner_still_obeys_a_later_freeze_drain(
+    scheduler: WorkspaceCoordinator, workspace: Path
+) -> None:
+    _, owner_token = start(scheduler, workspace, "maintenance")
+    _, waiter_token = start(scheduler, workspace, "waiter")
+    _, next_owner_token = start(scheduler, workspace, "next-maintenance")
+    owned = scheduler.acquire_claim(workspace, owner_token, freeze=True)
+    waiting = scheduler.acquire_claim(workspace, waiter_token, resources=("unity-live",))
+    next_freeze = scheduler.acquire_claim(
+        workspace, next_owner_token, freeze=True, priority="urgent"
+    )
+    with pytest.raises(BusyError) as blocked:
+        scheduler.acquire_claim(workspace, owner_token, resources=("unity-live",))
+    assert blocked.value.details["reason"] == "freeze-drain-requested"
+    status = {claim["id"]: claim for claim in scheduler.status(workspace)["claims"]}
+    assert status[owned["id"]]["state"] == "active"
+    assert status[waiting["id"]]["state"] == status[next_freeze["id"]]["state"] == "queued"
+
+
 def test_urgent_freeze_overtakes_queued_normal_work_but_not_active_work(
     scheduler: WorkspaceCoordinator, workspace: Path
 ) -> None:

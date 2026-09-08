@@ -3309,6 +3309,7 @@ class WorkspaceCoordinator:
             claim["id"]: WorkspaceCoordinator._claim_scopes(connection, claim["id"])
             for claim in active
         }
+        freeze_owners = {claim["task_id"] for claim in active if claim["kind"] == "freeze"}
         queued = list(
             connection.execute(
                 "SELECT * FROM claims WHERE workspace_id = ? AND state = 'queued'",
@@ -3327,6 +3328,11 @@ class WorkspaceCoordinator:
         blocked_earlier: list[sqlite3.Row] = []
         blocked_scopes: dict[str, dict[str, tuple[str, ...]]] = {}
         for candidate in queued:
+            if freeze_owners and candidate["task_id"] not in freeze_owners:
+                # The active freeze blocks this task. Its queued work cannot
+                # become a barrier to the freeze owner's own bounded work.
+                # Leave its order/priority intact for scheduling after release.
+                continue
             candidate_scopes = queued_scopes[candidate["id"]]
             if candidate["kind"] == "freeze":
                 other_active = [
