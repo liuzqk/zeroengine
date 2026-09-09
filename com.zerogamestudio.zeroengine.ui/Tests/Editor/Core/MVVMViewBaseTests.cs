@@ -41,7 +41,7 @@ namespace ZeroEngine.UI.Tests.Editor.Core
         }
 
         [Test]
-        public void Destroy_UnbindsBeforeModelDisposalAndReleasesStandaloneModel()
+        public void ViewDestroy_UnbindsBeforeModelDisposalAndReleasesStandaloneModel()
         {
             var model = new ProbeViewModel();
             _view.SetStandaloneForTest(model);
@@ -49,7 +49,7 @@ namespace ZeroEngine.UI.Tests.Editor.Core
             model.Value.Value = 7;
             Assert.That(_view.DisplayedValue, Is.EqualTo(7));
 
-            Object.DestroyImmediate(_gameObject);
+            _view.DestroyForTest();
 
             Assert.That(model.Calls, Is.EqualTo(new[] { "bind", "dispose" }));
             Assert.That(_view.DisplayedValue, Is.EqualTo(7), "Disposal must no longer update a destroyed view.");
@@ -58,9 +58,9 @@ namespace ZeroEngine.UI.Tests.Editor.Core
         }
 
         [Test]
-        public void Destroy_BeforeInitialization_IsSafe()
+        public void ViewDestroy_BeforeInitialization_IsSafe()
         {
-            Assert.DoesNotThrow(() => Object.DestroyImmediate(_gameObject));
+            Assert.DoesNotThrow(_view.DestroyForTest);
         }
 
         public sealed class ProbeView : MVVMViewBase<ProbeViewModel>
@@ -69,6 +69,9 @@ namespace ZeroEngine.UI.Tests.Editor.Core
             public int DisplayedValue { get; private set; }
             public void CreateForTest() => OnCreate();
             public void OpenForTest() => OnOpen();
+            // EditMode does not provide a runtime MonoBehaviour destruction callback;
+            // drive the same hook as the managed UI lifetime, as with Create/Open above.
+            public void DestroyForTest() => OnViewDestroy();
 
             public void SetStandaloneForTest(ProbeViewModel model)
             {
