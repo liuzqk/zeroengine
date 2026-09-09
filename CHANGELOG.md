@@ -5,6 +5,12 @@ tracked in each package's `package.json`.
 
 ## Unreleased
 
+- UI 2.3.0 adds the project-neutral `MVVMViewBase<TViewModel>` integration with
+  managed UIView lifecycle; product-specific view models and events stay in consumers.
+- EditorTools 1.1.0 adds exact-file byte snapshots with opt-in parent recreation,
+  unchanged-file preservation and explicit rollback verification. AssetDatabase,
+  scene/Undo and write-authority policies remain with the authoring owner.
+
 - Added root project documentation.
 - Added contribution, support, and security guidance.
 - Added MIT licensing.

@@ -3,7 +3,7 @@
 工业级、项目无关的 UI 框架包。
 
 ## 版本
-- **当前版本**: 2.2.0
+- **当前版本**: 2.3.0
 - **依赖**: ZeroEngine.Core, TextMeshPro
 
 2.1.0 在保持既有 UIManager/UIViewBase API 兼容的基础上，提供并发 open/close 请求串行化、
@@ -49,6 +49,7 @@ action/动画异常和对象销毁都会清理动画、恢复透明状态并释�
 
 ### UI.MVVM (可选)
 - MVVM 数据绑定框架
+- `MVVMViewBase<TViewModel>` 将 Initialize/绑定、每次 Open 的 Refresh 和 Destroy 的解绑/Dispose 接入 `UIViewBase` 生命周期。与独立 `MonoBehaviour` 的 `MVVMView<TViewModel>` 分开；产品事件、AppState 和角色数据留在消费项目。
 
 ### UI.Toast
 - `Toast` - gameplay notification facade
